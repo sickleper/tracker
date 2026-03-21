@@ -1,0 +1,11 @@
+/dist
+/node_modules
+/storage/deploy_logs/
+/local_sheets/
+/backup/backups/
+/fuel/uploads/
+/unused/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+        .wrapper { background-color: #f4f7ff; padding: 40px 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 30px rgba(79, 70, 229, 0.1); }
+        .header { background: #4f46e5; padding: 40px; text-align: center; color: white; }
+        .logo { max-height: 60px; margin-bottom: 20px; }
+        .content { padding: 40px; }
+        .investment-box { background: #f8faff; border: 2px solid #eef2ff; border-radius: 20px; padding: 30px; text-align: center; margin: 30px 0; }
+        .label { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; color: #818cf8; margin-bottom: 8px; display: block; }
+        .amount { font-size: 36px; font-weight: 900; color: #4f46e5; font-style: italic; }
+        .button { display: inline-block; background: #111827 !important; color: #ffffff !important; padding: 18px 40px; border-radius: 16px; text-decoration: none; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; font-size: 12px; margin-top: 20px; }
+        .footer { background: #111827; padding: 30px; text-align: center; color: #9ca3af; font-size: 11px; }
+        .footer p { margin: 5px 0; }
+        .highlight { color: #4f46e5; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <div class="container">
+            <div class="header">
+                <img src="{{LOGO_URL}}" class="logo" alt="{{COMPANY_NAME}}">
+                <h1 style="margin:0; font-size: 24px; font-weight: 900; font-style: italic; text-transform: uppercase; letter-spacing: -1px; color: white;">Project Proposal</h1>
+                <p style="margin:10px 0 0; opacity: 0.8; font-size: 14px; color: white;">Reference #{{PROPOSAL_ID}}</p>
+            </div>
+            
+            <div class="content">
+                <p>Dear <strong>{{CLIENT_NAME}}</strong>,</p>
+                <p>We are pleased to submit our project proposal for your review. Based on our assessment, we have outlined a comprehensive solution tailored to your requirements.</p>
+                
+                <div class="investment-box">
+                    <span class="label">Total Project Investment</span>
+                    <span class="amount">€{{TOTAL_AMOUNT}}</span>
+                </div>
+
+                <p>You can view the full breakdown of work, terms and conditions, and accept this proposal by clicking the button below:</p>
+                
+                <div style="text-align: center;">
+                    <a href="{{VIEW_URL}}" class="button" style="color: white;">View & Accept Proposal</a>
+                </div>
+
+                <p style="margin-top: 40px; font-size: 13px; color: #6b7280;">This proposal is valid until <strong>{{VALID_UNTIL}}</strong>.</p>
+            </div>
+
+            <div class="footer">
+                <p class="highlight" style="text-transform: uppercase; letter-spacing: 1px; color: #818cf8;">{{COMPANY_NAME}}</p>
+                <p>{{COMPANY_ADDRESS}}</p>
+                <p>© {{YEAR}} All Rights Reserved.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
