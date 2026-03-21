@@ -99,30 +99,30 @@ $ga4_cache_file = $_ENV['GA4_CACHE_FILE'] ?? __DIR__ . '/cache/analytics2_data.j
 
 // Google Drive
 $google_drive_credentials_path = $_ENV['GOOGLE_DRIVE_CREDENTIALS_PATH'] ?? '';
-$gallery_folder_id = $GLOBALS['gallery_folder_id'] ?? $_ENV['GALLERY_FOLDER_ID'] ?? '1IkR1DOk2v_HHKRXHJHTaajPutQQioAv4';
+$gallery_folder_id = $GLOBALS['gallery_folder_id'] ?? $_ENV['GALLERY_FOLDER_ID'] ?? '';
 
 // Email cache
 $email_cache_dir = $_ENV['EMAIL_CACHE_DIR'] ?? 'cache';
 
 // Google Calendar
-$google_calendar_id = $GLOBALS['google_calendar_id'] ?? $_ENV['GOOGLE_CALENDAR_ID'] ?? 'admin@energyretrofitireland.ie';
+$google_calendar_id = $GLOBALS['google_calendar_id'] ?? $_ENV['GOOGLE_CALENDAR_ID'] ?? '';
 $vehicle_docs_endpoint = $_ENV['VEHICLE_DOCS_ENDPOINT'] ?? '/fuel/vehicle_docs_calendar.php';
 $gun_licences_endpoint = $_ENV['GUN_LICENCES_ENDPOINT'] ?? '/jobs/gun_licences_calendar.php';
 $lead_callout_endpoint = $_ENV['LEAD_CALLOUT_ENDPOINT'] ?? '/jobs/lead_callout_data.php';
 
 // Google Stats
-$google_stats_property_id = $_ENV['GOOGLE_STATS_PROPERTY_ID'] ?? '431987483';
+$google_stats_property_id = $_ENV['GOOGLE_STATS_PROPERTY_ID'] ?? '';
 $google_stats_cache_file = $_ENV['GOOGLE_STATS_CACHE_FILE'] ?? 'cache/analytics_data.json';
 
 // Gun licences
-$gun_licence_upload_dir = $_ENV['GUN_LICENCE_UPLOAD_DIR'] ?? '/var/www/html/project-management/public/jobs/uploads/gun_license/';
-$gun_licence_web_dir = $_ENV['GUN_LICENCE_WEB_DIR'] ?? 'jobs/uploads/gun_license/';
+$gun_licence_upload_dir = $_ENV['GUN_LICENCE_UPLOAD_DIR'] ?? '/jobs/uploads/gun_license/';
+$gun_licence_web_dir = $_ENV['GUN_LICENCE_WEB_DIR'] ?? '/jobs/uploads/gun_license/';
 
 // Handyman
 $handyman_category_id = $_ENV['HANDYMAN_CATEGORY_ID'] ?? 5;
 
 // Heatmap
-$heatmap_cache_file = $_ENV['HEATMAP_CACHE_FILE'] ?? '/var/www/html/project-management/public/jobs/cache/leads_cache.json';
+$heatmap_cache_file = $_ENV['HEATMAP_CACHE_FILE'] ?? '/jobs/cache/leads_cache.json';
 $heatmap_api_key = $_ENV['HEATMAP_API_KEY'] ?? '';
 
 // Inventory
@@ -157,16 +157,16 @@ $fcm_api_key = $_ENV['FCM_API_KEY'] ?? '';
 $fcm_to = $_ENV['FCM_TO'] ?? '';
 
 // Site Visits
-$site_visits_lat = $GLOBALS['default_lat'] ?? $_ENV['SITE_VISITS_LAT'] ?? '53.4106';
-$site_visits_lng = $GLOBALS['default_lng'] ?? $_ENV['SITE_VISITS_LNG'] ?? '-6.4426';
+$site_visits_lat = $GLOBALS['default_lat'] ?? $_ENV['SITE_VISITS_LAT'] ?? '';
+$site_visits_lng = $GLOBALS['default_lng'] ?? $_ENV['SITE_VISITS_LNG'] ?? '';
 
 // Submit
 $submit_upload_dir = $_ENV['SUBMIT_UPLOAD_DIR'] ?? 'uploads/';
 
 // Tasks List Item
-$tasks_list_item_google_drive_url = $GLOBALS['google_script_drive_url'] ?? $_ENV['TASKS_LIST_ITEM_GOOGLE_DRIVE_URL'] ?? 'https://script.google.com/macros/s/AKfycbxuXfuRKhb45bKGGHaxw71KRK2VNgp6YzSIMSXDg4XgkCDOtKlXgveSjgloMt8EH2Xo/exec';
-$tasks_list_item_gallery_url = $GLOBALS['google_script_gallery_url'] ?? $_ENV['TASKS_LIST_ITEM_GALLERY_URL'] ?? 'https://script.google.com/a/macros/energyretrofitireland.ie/s/AKfycbwgQX6DqDgy-CGdmVIOXg9IfK4m-xmHCJDYd2rfdSV-Qqq1XPpO-wHZ_ZbvCBSFOKmN_w/exec';
+$tasks_list_item_google_drive_url = $GLOBALS['google_script_drive_url'] ?? $_ENV['TASKS_LIST_ITEM_GOOGLE_DRIVE_URL'] ?? '';
+$tasks_list_item_gallery_url = $GLOBALS['google_script_gallery_url'] ?? $_ENV['TASKS_LIST_ITEM_GALLERY_URL'] ?? '';
 
 // XML Dump Leads
-$xmldump_leads_latitude_from = $_ENV['XMLDUMP_LEADS_LATITUDE_FROM'] ?? '53.4106';
-$xmldump_leads_longitude_from = $_ENV['XMLDUMP_LEADS_LONGITUDE_FROM'] ?? '-6.4426';
+$xmldump_leads_latitude_from = $_ENV['XMLDUMP_LEADS_LATITUDE_FROM'] ?? '';
+$xmldump_leads_longitude_from = $_ENV['XMLDUMP_LEADS_LONGITUDE_FROM'] ?? '';
