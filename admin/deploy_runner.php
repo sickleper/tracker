@@ -55,7 +55,14 @@ if (!is_dir($logDir) && !mkdir($logDir, 0775, true) && !is_dir($logDir)) {
 
 $timestamp = date('Ymd-His');
 $logPath = $logDir . '/deploy-' . $timestamp . '.log';
-$command = 'bash ' . escapeshellarg($scriptPath) . ' ' . escapeshellarg($branch) . ' 2>&1';
+
+// Determine home directory for the current user
+$userName = posix_getpwuid(posix_geteuid())['name'];
+$userHome = '/home/' . $userName;
+$sshConfig = $userHome . '/.ssh/config';
+$gitSshCommand = "ssh -F " . escapeshellarg($sshConfig);
+
+$command = "export HOME=" . escapeshellarg($userHome) . " && export GIT_SSH_COMMAND=" . escapeshellarg($gitSshCommand) . " && bash " . escapeshellarg($scriptPath) . " " . escapeshellarg($branch) . " 2>&1";
 
 $output = [];
 $exitCode = 1;

@@ -65,7 +65,7 @@ include '../nav.php';
         </div>
     <?php endif; ?>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
         <div class="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm">
             <div class="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Current Branch</div>
             <div class="mt-3 text-2xl font-black text-slate-900 dark:text-white"><?php echo htmlspecialchars($currentBranch ?: 'unknown'); ?></div>
@@ -74,6 +74,14 @@ include '../nav.php';
             <div class="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Current Commit</div>
             <div class="mt-3 text-2xl font-black text-slate-900 dark:text-white"><?php echo htmlspecialchars($currentCommit ?: 'unknown'); ?></div>
             <div class="mt-2 text-xs text-slate-500 dark:text-slate-400"><?php echo htmlspecialchars($lastCommitMessage ?: 'No commit message available'); ?></div>
+        </div>
+        <div class="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm relative overflow-hidden" id="updateStatusCard">
+            <div class="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Update Status</div>
+            <div id="updateStatusText" class="mt-3 text-2xl font-black text-slate-900 dark:text-white">Checking...</div>
+            <div id="updateStatusDetails" class="mt-2 text-xs text-slate-500 dark:text-slate-400 italic">Click check to see updates</div>
+            <button id="checkUpdatesBtn" class="mt-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-100 dark:hover:bg-indigo-800/50 transition-all flex items-center gap-2">
+                <i class="fas fa-sync-alt" id="syncIcon"></i> Check Updates
+            </button>
         </div>
         <div class="rounded-3xl border <?php echo $workingTreeDirty ? 'border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-950/20' : 'border-emerald-200 dark:border-emerald-900/40 bg-emerald-50 dark:bg-emerald-950/20'; ?> p-6 shadow-sm">
             <div class="text-[10px] font-black uppercase tracking-[0.25em] <?php echo $workingTreeDirty ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-300'; ?>">Working Tree</div>
@@ -147,6 +155,58 @@ include '../nav.php';
 function getSwalTheme() {
     return document.documentElement.classList.contains('dark') ? 'dark' : 'default';
 }
+
+function checkUpdates() {
+    const btn = $('#checkUpdatesBtn');
+    const icon = $('#syncIcon');
+    const branch = $('#deployBranch').val();
+    
+    btn.prop('disabled', true);
+    icon.addClass('fa-spin');
+    $('#updateStatusText').text('Checking...');
+    
+    $.ajax({
+        url: 'check_updates.php',
+        method: 'GET',
+        data: { branch: branch },
+        success: function(res) {
+            btn.prop('disabled', false);
+            icon.removeClass('fa-spin');
+            
+            if (res.success) {
+                if (res.update_available) {
+                    $('#updateStatusText').text('Update Available!').addClass('text-amber-600 dark:text-amber-400');
+                    $('#updateStatusDetails').text('New: ' + res.remote_commit + ' - ' + res.remote_message);
+                    $('#updateStatusCard').addClass('bg-amber-50/50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800/50');
+                } else {
+                    $('#updateStatusText').text('Up to Date').removeClass('text-amber-600 dark:text-amber-400').addClass('text-emerald-600 dark:text-emerald-400');
+                    $('#updateStatusDetails').text('Current: ' + res.local_commit);
+                    $('#updateStatusCard').removeClass('bg-amber-50/50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800/50').addClass('bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800/50');
+                }
+            } else {
+                $('#updateStatusText').text('Error');
+                $('#updateStatusDetails').text(res.message);
+            }
+        },
+        error: function() {
+            btn.prop('disabled', false);
+            icon.removeClass('fa-spin');
+            $('#updateStatusText').text('Check Failed');
+        }
+    });
+}
+
+// Initial check on load
+$(document).ready(function() {
+    if ($('#checkUpdatesBtn').length) {
+        checkUpdates();
+    }
+});
+
+$('#checkUpdatesBtn').on('click', function(e) {
+    e.preventDefault();
+    checkUpdates();
+});
 
 $('#deployForm').on('submit', function(e) {
     e.preventDefault();
