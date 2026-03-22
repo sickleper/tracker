@@ -109,7 +109,7 @@ include '../nav.php';
         </div>
 
         <!-- STEP 2: SHARE (PUSH) -->
-        <div class="card-base relative flex flex-col <?php echo !$workingTreeDirty ? 'ring-4 ring-emerald-500/30' : 'opacity-50 pointer-events-none'; ?>">
+        <div id="step2Card" class="card-base relative flex flex-col <?php echo !$workingTreeDirty ? 'ring-4 ring-emerald-500/30' : 'opacity-50 pointer-events-none'; ?>">
             <div class="absolute -top-4 -left-4 w-10 h-10 rounded-full bg-emerald-500 text-white flex items-center justify-center font-black shadow-lg z-10">2</div>
             <div class="section-header">
                 <h3>Share with GitHub</h3>
@@ -117,7 +117,7 @@ include '../nav.php';
             </div>
             <div class="p-6 flex-1 flex flex-col justify-center">
                 <div class="mb-8 text-center px-4">
-                    <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed italic">
+                    <p id="pushStatusText" class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed italic">
                         Uploads your saved local version so other sites can see the updates.
                     </p>
                 </div>
@@ -128,7 +128,7 @@ include '../nav.php';
         </div>
 
         <!-- STEP 3: UPDATE (PULL) -->
-        <div class="card-base relative flex flex-col border-indigo-100 dark:border-indigo-900/50">
+        <div id="step3Card" class="card-base relative flex flex-col border-indigo-100 dark:border-indigo-900/50">
             <div class="absolute -top-4 -left-4 w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-black shadow-lg z-10">3</div>
             <div class="section-header">
                 <h3>Update This Site</h3>
@@ -194,14 +194,34 @@ function checkUpdates() {
             icon.removeClass('fa-spin');
             
             if (res.success) {
+                // Update Step 2 (Push) UI
+                const pushBtn = $('#runPushBtn');
+                const pushCard = $('#step2Card');
+                if (res.push_needed) {
+                    $('#pushStatusText').text('You have ' + res.is_ahead + ' new commit(s) to push to GitHub.').removeClass('italic');
+                    pushBtn.removeClass('bg-emerald-600 opacity-50').addClass('bg-amber-600 hover:bg-amber-700');
+                    pushCard.addClass('ring-4 ring-amber-500/30');
+                } else {
+                    $('#pushStatusText').text('Local version matches GitHub. No push needed.').addClass('italic');
+                    pushBtn.addClass('opacity-50');
+                    pushCard.removeClass('ring-4 ring-amber-500/30');
+                }
+
+                // Update Step 3 (Update) UI
+                const deployBtn = $('#runDeployBtn');
+                const step3Card = $('#step3Card');
                 if (res.update_available) {
                     $('#updateStatusText').text('Update Ready').addClass('text-amber-500');
                     $('#updateStatusDetails').text('New: ' + res.remote_commit + ' - ' + res.remote_message);
                     $('#updateStatusCard').addClass('bg-amber-50/10 border-amber-500/30');
+                    deployBtn.addClass('ring-4 ring-indigo-500/50');
+                    step3Card.addClass('ring-4 ring-indigo-500/30');
                 } else {
                     $('#updateStatusText').text('Synced').removeClass('text-amber-500').addClass('text-emerald-500');
                     $('#updateStatusDetails').text('Matching GitHub @ ' + res.local_commit);
                     $('#updateStatusCard').removeClass('bg-amber-50/10 border-amber-500/30').addClass('bg-emerald-50/10 border-emerald-500/30');
+                    deployBtn.removeClass('ring-4 ring-indigo-500/50');
+                    step3Card.removeClass('ring-4 ring-indigo-500/30');
                 }
             } else {
                 $('#updateStatusText').text('Status Error');

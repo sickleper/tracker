@@ -50,17 +50,21 @@ $branch = trim((string) ($_GET['branch'] ?? 'main'));
 $localCommit = trim((string) shell_exec("cd " . escapeshellarg($repoDir) . " && git rev-parse $branch"));
 $remoteCommit = trim((string) shell_exec("cd " . escapeshellarg($repoDir) . " && git rev-parse origin/$branch"));
 
-$updateAvailable = ($localCommit !== $remoteCommit);
+$isAhead = (int) shell_exec("cd " . escapeshellarg($repoDir) . " && git rev-list --count origin/$branch..$branch");
+$isBehind = (int) shell_exec("cd " . escapeshellarg($repoDir) . " && git rev-list --count $branch..origin/$branch");
 
 // Get remote commit message if update available
 $remoteMessage = '';
-if ($updateAvailable) {
+if ($isBehind > 0) {
     $remoteMessage = trim((string) shell_exec("cd " . escapeshellarg($repoDir) . " && git log -1 --pretty=%s origin/$branch"));
 }
 
 echo json_encode([
     'success' => true,
-    'update_available' => $updateAvailable,
+    'update_available' => ($isBehind > 0),
+    'push_needed' => ($isAhead > 0),
+    'is_ahead' => $isAhead,
+    'is_behind' => $isBehind,
     'local_commit' => substr($localCommit, 0, 7),
     'remote_commit' => substr($remoteCommit, 0, 7),
     'remote_message' => $remoteMessage,
