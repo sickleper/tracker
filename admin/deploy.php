@@ -33,10 +33,11 @@ include '../nav.php';
 ?>
 
 <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
-            <h1 class="heading-brand">Tracker Deploy</h1>
-            <p class="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-widest mt-1">Owner-only deploy trigger for `/home/workorders/trackers` using the GitHub repo.</p>
+            <h1 class="heading-brand">System Maintenance</h1>
+            <p class="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-widest mt-1">Version control and synchronized updates across all instances.</p>
         </div>
         <div class="flex gap-3">
             <a href="index.php" class="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95 shadow-xl flex items-center gap-2">
@@ -45,127 +46,128 @@ include '../nav.php';
         </div>
     </div>
 
-    <div class="mb-8 rounded-3xl border border-indigo-100 dark:border-indigo-900/50 bg-indigo-50 dark:bg-indigo-950/20 p-5">
-        <div class="text-[10px] font-black uppercase tracking-[0.25em] text-indigo-600 dark:text-indigo-300">Controlled Deploy</div>
-        <p class="mt-2 text-sm font-medium text-indigo-900 dark:text-indigo-100">This page does not edit live files. It runs a guarded Git deploy script for the tracker repo only and logs the result.</p>
-    </div>
-
-    <?php if (!$repoConfigured): ?>
-        <div class="mb-8 rounded-3xl border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-950/20 p-5">
-            <div class="text-[10px] font-black uppercase tracking-[0.25em] text-amber-600 dark:text-amber-300">Git Not Configured</div>
-            <p class="mt-2 text-sm font-medium text-amber-900 dark:text-amber-100">`/home/workorders/trackers` does not contain a `.git` directory yet, so admin deploys cannot run.</p>
-            <div class="mt-4 text-xs leading-6 text-amber-800 dark:text-amber-200 font-mono">
-                cd /home/workorders/trackers<br>
-                git init<br>
-                git remote add origin &lt;github-repo-url&gt;<br>
-                git fetch origin<br>
-                git checkout -b main --track origin/main
-            </div>
-        </div>
-    <?php endif; ?>
-
-    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+    <!-- Status Overview -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-12">
         <div class="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm">
             <div class="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Current Branch</div>
             <div class="mt-3 text-2xl font-black text-slate-900 dark:text-white"><?php echo htmlspecialchars($currentBranch ?: 'unknown'); ?></div>
         </div>
+        
         <div class="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm">
-            <div class="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Current Commit</div>
+            <div class="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Current Version</div>
             <div class="mt-3 text-2xl font-black text-slate-900 dark:text-white"><?php echo htmlspecialchars($currentCommit ?: 'unknown'); ?></div>
-            <div class="mt-2 text-xs text-slate-500 dark:text-slate-400"><?php echo htmlspecialchars($lastCommitMessage ?: 'No commit message available'); ?></div>
+            <div class="mt-2 text-xs text-slate-500 dark:text-slate-400 truncate"><?php echo htmlspecialchars($lastCommitMessage ?: 'No message'); ?></div>
         </div>
+
         <div class="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm relative overflow-hidden" id="updateStatusCard">
-            <div class="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Update Status</div>
+            <div class="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">GitHub Sync</div>
             <div id="updateStatusText" class="mt-3 text-2xl font-black text-slate-900 dark:text-white">Checking...</div>
-            <div id="updateStatusDetails" class="mt-2 text-xs text-slate-500 dark:text-slate-400 italic">Click check to see updates</div>
+            <div id="updateStatusDetails" class="mt-2 text-xs text-slate-500 dark:text-slate-400 italic">...</div>
             <button id="checkUpdatesBtn" class="mt-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-100 dark:hover:bg-indigo-800/50 transition-all flex items-center gap-2">
-                <i class="fas fa-sync-alt" id="syncIcon"></i> Check Updates
+                <i class="fas fa-sync-alt" id="syncIcon"></i> Check Repository
             </button>
         </div>
+
         <div class="rounded-3xl border <?php echo $workingTreeDirty ? 'border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-950/20' : 'border-emerald-200 dark:border-emerald-900/40 bg-emerald-50 dark:bg-emerald-950/20'; ?> p-6 shadow-sm">
-            <div class="text-[10px] font-black uppercase tracking-[0.25em] <?php echo $workingTreeDirty ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-300'; ?>">Working Tree</div>
-            <div class="mt-3 text-2xl font-black <?php echo $workingTreeDirty ? 'text-amber-900 dark:text-amber-100' : 'text-emerald-900 dark:text-emerald-100'; ?>"><?php echo $workingTreeDirty ? 'Dirty' : 'Clean'; ?></div>
-            <div class="mt-2 text-xs <?php echo !$repoConfigured ? 'text-slate-600 dark:text-slate-300' : ($workingTreeDirty ? 'text-amber-700 dark:text-amber-300' : 'text-emerald-700 dark:text-emerald-300'); ?>">
-                <?php
-                if (!$repoConfigured) {
-                    echo 'Git deploy is unavailable until the repo is initialized.';
-                } else {
-                    echo $workingTreeDirty ? 'Deploy script will stop until local changes are resolved.' : 'Safe to run a fast-forward deploy.';
-                }
-                ?>
+            <div class="text-[10px] font-black uppercase tracking-[0.25em] <?php echo $workingTreeDirty ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-300'; ?>">Local Changes</div>
+            <div class="mt-3 text-2xl font-black <?php echo $workingTreeDirty ? 'text-amber-900 dark:text-amber-100' : 'text-emerald-900 dark:text-emerald-100'; ?>"><?php echo $workingTreeDirty ? 'Modified' : 'Clean'; ?></div>
+            <div class="mt-2 text-xs <?php echo $workingTreeDirty ? 'text-amber-700 dark:text-amber-300' : 'text-emerald-700 dark:text-emerald-300'; ?>">
+                <?php echo $workingTreeDirty ? 'You have unsaved edits on this site.' : 'No local edits detected.'; ?>
             </div>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-6">
-        <div class="space-y-6">
-            <?php if ($workingTreeDirty): ?>
-            <div class="card-base border-amber-200 dark:border-amber-900/40 bg-amber-50/30 dark:bg-amber-950/10">
-                <div class="section-header">
-                    <h3><i class="fas fa-save text-amber-500 mr-2"></i> Commit Local Changes</h3>
-                    <p class="text-[10px] font-bold uppercase tracking-widest text-amber-600/60">Resolve dirty working tree before deploy</p>
-                </div>
-                <form id="commitForm" class="p-6 space-y-4">
-                    <div>
-                        <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Commit Message</label>
-                        <textarea id="commitMessage" name="message" rows="2" required placeholder="Describe what you changed..." class="w-full p-4 bg-white dark:bg-slate-950 border border-amber-200 dark:border-amber-900/50 rounded-2xl text-sm font-medium dark:text-white outline-none focus:ring-2 focus:ring-amber-500"></textarea>
-                    </div>
+    <!-- 3-Step Workflow: Horizontal Columns on Large Screens -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+        
+        <!-- STEP 1: SAVE (COMMIT) -->
+        <div class="card-base relative flex flex-col <?php echo $workingTreeDirty ? 'ring-4 ring-amber-500/30' : 'opacity-70'; ?>">
+            <div class="absolute -top-4 -left-4 w-10 h-10 rounded-full bg-amber-500 text-white flex items-center justify-center font-black shadow-lg z-10">1</div>
+            <div class="section-header">
+                <h3>Save Local Edits</h3>
+                <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400">Commit changes to this server</p>
+            </div>
+            
+            <div class="p-6 flex-1 flex flex-col justify-center">
+                <?php if ($workingTreeDirty): ?>
+                <form id="commitForm" class="space-y-4">
+                    <textarea id="commitMessage" name="message" rows="3" required placeholder="What did you change? (e.g., 'Update logo')" class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-medium dark:text-white outline-none focus:ring-2 focus:ring-amber-500"></textarea>
                     <button type="submit" id="runCommitBtn" class="w-full bg-amber-600 hover:bg-amber-700 text-white px-6 py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3">
-                        <i class="fas fa-check-double"></i> Stage & Commit
+                        <i class="fas fa-save"></i> Step 1: Save
+                    </button>
+                </form>
+                <?php else: ?>
+                <div class="py-12 text-center text-emerald-600 dark:text-emerald-400">
+                    <div class="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-check-double text-2xl"></i>
+                    </div>
+                    <p class="font-black uppercase tracking-widest text-xs">Everything Saved</p>
+                    <p class="text-xs opacity-70 mt-1">No pending local changes.</p>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <!-- STEP 2: SHARE (PUSH) -->
+        <div class="card-base relative flex flex-col <?php echo !$workingTreeDirty ? 'ring-4 ring-emerald-500/30' : 'opacity-50 pointer-events-none'; ?>">
+            <div class="absolute -top-4 -left-4 w-10 h-10 rounded-full bg-emerald-500 text-white flex items-center justify-center font-black shadow-lg z-10">2</div>
+            <div class="section-header">
+                <h3>Share with GitHub</h3>
+                <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400">Sync changes to master repo</p>
+            </div>
+            <div class="p-6 flex-1 flex flex-col justify-center">
+                <div class="mb-8 text-center px-4">
+                    <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed italic">
+                        Uploads your saved local version so other sites can see the updates.
+                    </p>
+                </div>
+                <button type="button" id="runPushBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3 mt-auto">
+                    <i class="fas fa-cloud-upload-alt"></i> Step 2: Push
+                </button>
+            </div>
+        </div>
+
+        <!-- STEP 3: UPDATE (PULL) -->
+        <div class="card-base relative flex flex-col border-indigo-100 dark:border-indigo-900/50">
+            <div class="absolute -top-4 -left-4 w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-black shadow-lg z-10">3</div>
+            <div class="section-header">
+                <h3>Update This Site</h3>
+                <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400">Download latest from GitHub</p>
+            </div>
+            <div class="p-6 flex-1 flex flex-col justify-center">
+                <form id="deployForm" class="space-y-6">
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Branch to pull:</label>
+                        <select name="branch" id="deployBranch" class="w-full p-3 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500">
+                            <?php foreach ($allowedBranches as $branch): ?>
+                                <option value="<?php echo htmlspecialchars($branch); ?>" <?php echo $currentBranch === $branch ? 'selected' : ''; ?>><?php echo htmlspecialchars($branch); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <button type="submit" id="runDeployBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3">
+                        <i class="fas fa-cloud-download-alt"></i> Step 3: Update
                     </button>
                 </form>
             </div>
-            <?php endif; ?>
-
-            <div class="card-base border-none">
-                <div class="section-header">
-                    <h3><i class="fas fa-rocket text-indigo-400 mr-2"></i> Run Deploy</h3>
-                    <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400">Allowed branches only. No arbitrary shell input.</p>
-                </div>
-            <form id="deployForm" class="space-y-6">
-                <div>
-                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Branch</label>
-                    <select name="branch" id="deployBranch" class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500">
-                        <?php foreach ($allowedBranches as $branch): ?>
-                            <option value="<?php echo htmlspecialchars($branch); ?>" <?php echo $currentBranch === $branch ? 'selected' : ''; ?>><?php echo htmlspecialchars($branch); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-4 text-xs text-slate-600 dark:text-slate-300">
-                    The deploy script will:
-                    <div class="mt-2 font-mono text-[11px] leading-6">
-                        1. verify the repo is clean<br>
-                        2. fetch origin<br>
-                        3. checkout the selected branch<br>
-                        4. pull with <code>--ff-only</code><br>
-                        5. write a deploy log
-                    </div>
-                </div>
-                <button type="submit" id="runDeployBtn" <?php echo !$repoConfigured ? 'disabled' : ''; ?> class="w-full <?php echo !$repoConfigured ? 'bg-slate-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'; ?> text-white px-6 py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3">
-                    <i class="fas fa-cloud-download-alt"></i> Deploy Tracker
-                </button>
-            </form>
         </div>
+    </div>
 
-        <div class="card-base border-none">
-            <div class="section-header">
-                <h3><i class="fas fa-terminal text-indigo-400 mr-2"></i> Deploy Output</h3>
-                <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400">Latest run output and log reference.</p>
-            </div>
-            <div id="deployStatus" class="mb-4 text-sm font-bold text-slate-500 dark:text-slate-400">No deploy has been run in this session.</div>
-            <pre id="deployOutput" class="min-h-[360px] whitespace-pre-wrap rounded-3xl border border-slate-200 dark:border-slate-800 bg-slate-950 p-6 text-xs leading-6 text-slate-200 overflow-auto"><?php
-                if ($latestLog && is_readable($latestLog)) {
-                    echo htmlspecialchars((string) file_get_contents($latestLog));
-                } else {
-                    echo 'No deploy log available yet.';
-                }
-            ?></pre>
-            <?php if ($latestLog): ?>
-                <div class="mt-4 text-[10px] font-black uppercase tracking-widest text-gray-400">
-                    Latest Log: <?php echo htmlspecialchars($latestLog); ?>
-                </div>
-            <?php endif; ?>
+    <!-- Activity Log: Full Width Bottom -->
+    <div class="card-base border-none bg-slate-900 text-slate-200 overflow-hidden flex flex-col">
+        <div class="section-header border-slate-800 bg-slate-950/50 px-6 py-4">
+            <h3 class="text-white flex items-center gap-3">
+                <i class="fas fa-terminal text-indigo-400"></i> 
+                Activity Log
+                <span id="deployStatus" class="ml-4 px-3 py-1 bg-white/5 rounded-full text-[9px] font-black uppercase tracking-widest text-indigo-400">System Idle</span>
+            </h3>
         </div>
+        <pre id="deployOutput" class="p-8 text-[11px] font-mono leading-relaxed overflow-auto max-h-[600px] min-h-[300px] bg-slate-900"><?php
+            if ($latestLog && is_readable($latestLog)) {
+                echo htmlspecialchars((string) file_get_contents($latestLog));
+            } else {
+                echo 'System ready. Select a step above to begin.';
+            }
+        ?></pre>
     </div>
 </div>
 
@@ -181,7 +183,7 @@ function checkUpdates() {
     
     btn.prop('disabled', true);
     icon.addClass('fa-spin');
-    $('#updateStatusText').text('Checking...');
+    $('#updateStatusText').text('Syncing...');
     
     $.ajax({
         url: 'check_updates.php',
@@ -193,28 +195,27 @@ function checkUpdates() {
             
             if (res.success) {
                 if (res.update_available) {
-                    $('#updateStatusText').text('Update Available!').addClass('text-amber-600 dark:text-amber-400');
+                    $('#updateStatusText').text('Update Ready').addClass('text-amber-500');
                     $('#updateStatusDetails').text('New: ' + res.remote_commit + ' - ' + res.remote_message);
-                    $('#updateStatusCard').addClass('bg-amber-50/50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800/50');
+                    $('#updateStatusCard').addClass('bg-amber-50/10 border-amber-500/30');
                 } else {
-                    $('#updateStatusText').text('Up to Date').removeClass('text-amber-600 dark:text-amber-400').addClass('text-emerald-600 dark:text-emerald-400');
-                    $('#updateStatusDetails').text('Current: ' + res.local_commit);
-                    $('#updateStatusCard').removeClass('bg-amber-50/50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800/50').addClass('bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800/50');
+                    $('#updateStatusText').text('Synced').removeClass('text-amber-500').addClass('text-emerald-500');
+                    $('#updateStatusDetails').text('Matching GitHub @ ' + res.local_commit);
+                    $('#updateStatusCard').removeClass('bg-amber-50/10 border-amber-500/30').addClass('bg-emerald-50/10 border-emerald-500/30');
                 }
             } else {
-                $('#updateStatusText').text('Error');
+                $('#updateStatusText').text('Status Error');
                 $('#updateStatusDetails').text(res.message);
             }
         },
         error: function() {
             btn.prop('disabled', false);
             icon.removeClass('fa-spin');
-            $('#updateStatusText').text('Check Failed');
+            $('#updateStatusText').text('Network Error');
         }
     });
 }
 
-// Initial check on load
 $(document).ready(function() {
     if ($('#checkUpdatesBtn').length) {
         checkUpdates();
@@ -232,7 +233,7 @@ $('#commitForm').on('submit', function(e) {
     const original = btn.html();
     const message = $('#commitMessage').val();
     
-    btn.prop('disabled', true).html('<i class="fas fa-circle-notch fa-spin"></i> Committing...');
+    btn.prop('disabled', true).html('<i class="fas fa-circle-notch fa-spin"></i> Saving...');
     
     $.ajax({
         url: 'commit_runner.php',
@@ -244,7 +245,7 @@ $('#commitForm').on('submit', function(e) {
             
             Swal.fire({
                 icon: res.success ? 'success' : 'error',
-                title: res.success ? 'Commit Success' : 'Commit Failed',
+                title: res.success ? 'Changes Saved' : 'Save Failed',
                 text: res.message,
                 theme: getSwalTheme()
             }).then(() => {
@@ -253,8 +254,45 @@ $('#commitForm').on('submit', function(e) {
         },
         error: function(xhr) {
             btn.prop('disabled', false).html(original);
-            const message = xhr.responseJSON?.message || 'Commit request failed.';
+            const message = xhr.responseJSON?.message || 'Save request failed.';
             Swal.fire({ icon: 'error', title: 'Error', text: message, theme: getSwalTheme() });
+        }
+    });
+});
+
+$('#runPushBtn').on('click', function(e) {
+    e.preventDefault();
+    const btn = $(this);
+    const original = btn.html();
+    const branch = $('#deployBranch').val();
+    
+    btn.prop('disabled', true).html('<i class="fas fa-circle-notch fa-spin"></i> Sharing...');
+    $('#deployStatus').text('Uploading to GitHub...');
+
+    $.ajax({
+        url: 'push_runner.php',
+        method: 'POST',
+        data: { branch: branch },
+        success: function(res) {
+            btn.prop('disabled', false).html(original);
+            $('#deployStatus').text(res.message || 'Push completed.');
+            $('#deployOutput').text(res.output || 'No output returned.');
+
+            Swal.fire({
+                icon: res.success ? 'success' : 'error',
+                title: res.success ? 'Changes Shared' : 'Share Failed',
+                text: res.message,
+                theme: getSwalTheme()
+            }).then(() => {
+                if (res.success) checkUpdates();
+            });
+        },
+        error: function(xhr) {
+            btn.prop('disabled', false).html(original);
+            const message = xhr.responseJSON?.message || 'Share request failed.';
+            $('#deployStatus').text(message);
+            $('#deployOutput').text(xhr.responseJSON?.output || message);
+            Swal.fire({ icon: 'error', title: 'Share Failed', text: message, theme: getSwalTheme() });
         }
     });
 });
@@ -264,8 +302,8 @@ $('#deployForm').on('submit', function(e) {
 
     const btn = $('#runDeployBtn');
     const original = btn.html();
-    btn.prop('disabled', true).html('<i class="fas fa-circle-notch fa-spin"></i> Deploying...');
-    $('#deployStatus').text('Deploy started...');
+    btn.prop('disabled', true).html('<i class="fas fa-circle-notch fa-spin"></i> Updating...');
+    $('#deployStatus').text('Downloading from GitHub...');
 
     $.ajax({
         url: 'deploy_runner.php',
@@ -273,22 +311,22 @@ $('#deployForm').on('submit', function(e) {
         data: { branch: $('#deployBranch').val() },
         success: function(res) {
             btn.prop('disabled', false).html(original);
-            $('#deployStatus').text(res.message || 'Deploy completed.');
+            $('#deployStatus').text(res.message || 'Update completed.');
             $('#deployOutput').text(res.output || 'No output returned.');
 
             Swal.fire({
                 icon: res.success ? 'success' : 'error',
-                title: res.success ? 'Deploy Complete' : 'Deploy Failed',
-                text: res.message || 'Deploy finished.',
+                title: res.success ? 'Site Updated' : 'Update Failed',
+                text: res.message,
                 theme: getSwalTheme()
             });
         },
         error: function(xhr) {
             btn.prop('disabled', false).html(original);
-            const message = xhr.responseJSON?.message || 'Deploy request failed.';
+            const message = xhr.responseJSON?.message || 'Update request failed.';
             $('#deployStatus').text(message);
             $('#deployOutput').text(xhr.responseJSON?.output || message);
-            Swal.fire({ icon: 'error', title: 'Deploy Failed', text: message, theme: getSwalTheme() });
+            Swal.fire({ icon: 'error', title: 'Update Failed', text: message, theme: getSwalTheme() });
         }
     });
 });
