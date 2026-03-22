@@ -41,7 +41,7 @@ include 'nav.php';
             </div>
             <div class="h-8 w-px bg-gray-200 dark:bg-slate-800 hidden md:block"></div>
             <div class="flex flex-wrap gap-2 flex-grow md:flex-grow-0">
-                <?php if (($_SESSION['email'] ?? '') === ($GLOBALS['super_admin_email'] ?? 'websites.dublin@gmail.com')): ?>
+                <?php if (trackerSuperAdminEmail() !== '' && ($_SESSION['email'] ?? '') === trackerSuperAdminEmail()): ?>
                     <a href="gmail_orders.php" class="btn-secondary dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/50 py-2 px-4 shadow-none text-sm flex-1 md:flex-none" title="Gmail Work Orders"><i class="fab fa-google"></i> <span class="hidden lg:inline">Gmail</span></a>
                 <?php endif; ?>
                 <button onclick="toggleStats()" class="btn-primary py-2 px-4 shadow-none text-sm flex-1 md:flex-none" title="Toggle Stats"><i class="fas fa-chart-pie"></i> <span class="hidden lg:inline">Stats</span></button>
@@ -75,11 +75,6 @@ include 'nav.php';
             </a>
         <?php endif; ?>
 
-        <?php if ($clientFilter == 214): ?>
-            <button onclick="openAspenForm()" class="aspen-btn-trigger px-6 py-2.5 bg-emerald-600 text-white border-emerald-700 shadow-md rounded-full font-bold text-xs uppercase flex items-center gap-2 border transition-all hover:bg-emerald-700 ml-4">
-                <i class="fas fa-file-invoice"></i> Aspen Form
-            </button>
-        <?php endif; ?>
     </div>
 
     <!-- Dashboard -->
@@ -193,9 +188,6 @@ $(document).ready(function() {
                 // Update URL without reload
                 window.history.pushState({}, '', url);
                 
-                // Handle Aspen button visibility
-                if (clientId == 214) $('.aspen-btn-trigger').removeClass('hidden');
-                else $('.aspen-btn-trigger').addClass('hidden');
             } else {
                 Swal.fire({
                     icon: 'error',

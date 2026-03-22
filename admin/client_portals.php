@@ -8,7 +8,7 @@ if (!isTrackerAuthenticated()) {
     exit();
 }
 
-$superAdminEmail = $GLOBALS['super_admin_email'] ?? 'websites.dublin@gmail.com';
+$superAdminEmail = trackerSuperAdminEmail();
 if (($_SESSION['email'] ?? '') !== $superAdminEmail) {
     header('Location: ../index.php');
     exit();
@@ -79,41 +79,50 @@ include '../nav.php';
                     <button type="button" onclick="closeClientPortalModal()" class="w-8 h-8 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full transition-all text-white">&times;</button>
                 </div>
             </div>
+            <div class="space-y-4 rounded-3xl border border-gray-200 dark:border-slate-800 bg-gray-50/70 dark:bg-slate-950/40 p-4">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <div class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400">Enable Custom WO Form</div>
+                        <p class="text-[11px] text-slate-600 dark:text-slate-300">Toggle this switch, then press Save to persist the portal enablement separately from the wizard.</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="portalEnabled" name="is_wo_form_enabled" value="1" class="sr-only peer" />
+                        <span class="w-11 h-6 bg-gray-200 dark:bg-slate-700 rounded-full transition-colors peer-checked:bg-indigo-600 relative flex items-center justify-start px-0.5">
+                            <span class="inline-block h-5 w-5 rounded-full bg-white transition-transform peer-checked:translate-x-5"></span>
+                        </span>
+                        <span class="ml-3 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Enable</span>
+                    </label>
+                </div>
+                <button type="button" id="savePortalToggleBtn" class="w-full rounded-2xl bg-indigo-600 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white hover:bg-indigo-700 transition-all">Save Enablement</button>
+            </div>
             <form id="clientPortalForm" class="p-8 space-y-8 overflow-y-auto max-h-[80vh] custom-scrollbar">
                 <input type="hidden" name="client_id" id="portalClientId">
 
                 <div class="p-4 bg-indigo-50 dark:bg-indigo-950/30 rounded-2xl border border-indigo-100 dark:border-indigo-900/50">
                     <label class="block text-[9px] font-black uppercase tracking-widest text-indigo-400 mb-1">Your Unique Portal URL:</label>
                     <div class="flex items-center justify-between gap-4">
-                        <code id="portalUrlDisplay" class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 truncate"></code>
+                        <a id="portalUrlDisplay" href="#" target="_blank" rel="noopener noreferrer" class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 truncate hover:text-indigo-900 dark:hover:text-indigo-200"></a>
                         <button type="button" onclick="copyPortalUrl()" class="px-3 py-1.5 bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-900 text-[9px] font-black uppercase rounded-lg hover:bg-indigo-600 hover:text-white transition-all">Copy</button>
                     </div>
                 </div>
 
                 <div class="rounded-3xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 p-4">
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">
-                        <button type="button" class="wizard-step-indicator rounded-2xl bg-indigo-600 text-white px-3 py-3" data-step-target="1">1. Access</button>
-                        <button type="button" class="wizard-step-indicator rounded-2xl bg-slate-200 dark:bg-slate-800 px-3 py-3" data-step-target="2">2. Intake</button>
-                        <button type="button" class="wizard-step-indicator rounded-2xl bg-slate-200 dark:bg-slate-800 px-3 py-3" data-step-target="3">3. Extract</button>
-                        <button type="button" class="wizard-step-indicator rounded-2xl bg-slate-200 dark:bg-slate-800 px-3 py-3" data-step-target="4">4. Review</button>
-                    </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">
+                    <button type="button" class="wizard-step-indicator rounded-2xl bg-indigo-600 text-white px-3 py-3" data-step-target="1">1. Access</button>
+                    <button type="button" class="wizard-step-indicator rounded-2xl bg-slate-200 dark:bg-slate-800 px-3 py-3" data-step-target="2">2. Intake</button>
+                    <button type="button" class="wizard-step-indicator rounded-2xl bg-slate-200 dark:bg-slate-800 px-3 py-3" data-step-target="3">3. Extract</button>
+                    <button type="button" class="wizard-step-indicator rounded-2xl bg-slate-200 dark:bg-slate-800 px-3 py-3" data-step-target="4">4. Review</button>
                 </div>
+            </div>
 
                 <div class="wizard-step-panel" data-wizard-step="1">
                     <div class="space-y-6">
                         <h4 class="text-xs font-black uppercase tracking-widest text-indigo-500 pb-2 border-b border-gray-100 dark:border-slate-800">1. Portal Access & Branding</h4>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div class="flex items-center gap-3 p-4 bg-gray-50 dark:bg-slate-950 rounded-2xl border border-gray-200 dark:border-slate-800">
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" name="is_wo_form_enabled" id="portalEnabled" value="1" class="sr-only peer">
-                                    <div class="w-11 h-6 bg-gray-200 dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                                </label>
-                                <span class="text-xs font-black uppercase tracking-widest text-gray-500">Enable Custom WO Form</span>
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Company Logo URL</label>
-                                <input type="text" name="logo_url" id="portalLogo" class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500">
-                            </div>
+                        <div>
+                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Company Logo URL</label>
+                            <input type="text" name="logo_url" id="portalLogo" class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
                         </div>
                     </div>
                 </div>
@@ -175,7 +184,7 @@ include '../nav.php';
                                 <input type="text" name="pdf_end_marker" id="portalPdfEnd" class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g. Additional Instructions:">
                             </div>
                             <div data-intake-field="email_with_subject_workorder email_with_pdf_attachment">
-                                <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">PO Prefix (e.g. ASPEN-)</label>
+                                <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">PO Prefix (e.g. WO-)</label>
                                 <input type="text" name="wo_prefix" id="portalPrefix" class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500">
                             </div>
                             <div data-intake-field="email_with_subject_workorder email_with_pdf_attachment">
@@ -338,10 +347,10 @@ include '../nav.php';
                         <div class="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Step 1. Match Sender</div>
                         <p class="mt-3 text-sm text-slate-700 dark:text-slate-300">Use the sender or domain that identifies the client.</p>
                         <div class="mt-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 font-mono text-xs text-slate-700 dark:text-slate-300">
-                            cilldarahousing.ie
+                            clientdomain.example
                         </div>
                         <div class="mt-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 font-mono text-xs text-slate-700 dark:text-slate-300">
-                            repairs@icarehousing.ie
+                            repairs@example.com
                         </div>
                     </div>
 
@@ -580,6 +589,35 @@ document.addEventListener('DOMContentLoaded', function() {
         $('#portalHelpModal').addClass('hidden');
     };
 
+    function savePortalToggle() {
+        const clientId = $('#portalClientId').val();
+        if (!clientId) {
+            Swal.fire({ ...getSwalConfig(), icon: 'warning', title: 'Select Client', text: 'Pick a client before saving this toggle.' });
+            return;
+        }
+        const payload = {
+            id: clientId,
+            is_wo_form_enabled: $('#portalEnabled').is(':checked') ? 1 : 0
+        };
+
+        $.ajax({
+            url: '../save_client_details.php',
+            method: 'POST',
+            data: payload,
+            success: function(res) {
+                if (res.success) {
+                    Swal.fire({ ...getSwalConfig(), icon: 'success', title: 'Saved', timer: 1200, showConfirmButton: false });
+                    loadClientPortals();
+                } else {
+                    Swal.fire({ ...getSwalConfig(), icon: 'error', title: 'Save Failed', text: res.message || 'Unable to update portal status.' });
+                }
+            },
+            error: function() {
+                Swal.fire({ ...getSwalConfig(), icon: 'error', title: 'Save Failed', text: 'Unable to update portal status.' });
+            }
+        });
+    }
+
     window.loadClientPortals = function() {
         $('#clientPortalsBody').html('<tr><td colspan="6" class="p-0 border-none"><div class="flex flex-col items-center justify-center py-32 bg-white dark:bg-slate-900/20"><i class="fas fa-circle-notch fa-spin text-4xl text-indigo-500 mb-4"></i><p class="text-[10px] font-black uppercase tracking-widest text-gray-400">Loading Portals...</p></div></td></tr>');
         $.getJSON('../tracker_clients.php', function(res) {
@@ -804,7 +842,9 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             const cleanAppUrl = window.location.origin + window.location.pathname.replace('/admin/client_portals.php', '');
-            $('#portalUrlDisplay').text(`${cleanAppUrl}/public/workorder_form.php?h=${c.hash}`);
+            const slugParam = c.tenant_slug ? `&tenant_slug=${encodeURIComponent(c.tenant_slug)}` : '';
+            const portalUrl = `${cleanAppUrl}/public/workorder_form.php?h=${c.hash}${slugParam}`;
+            $('#portalUrlDisplay').text(portalUrl).attr('href', portalUrl);
             $('#clientPortalModal').removeClass('hidden');
         }).fail(function() {
             Swal.fire({ ...getSwalConfig(), icon: 'error', title: 'Error', text: 'Failed to load client portal details.' });
@@ -879,6 +919,10 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     });
 
+    $('#savePortalToggleBtn').on('click', function() {
+        savePortalToggle();
+    });
+
     $('#portalSampleSender, #portalSampleSubject, #portalMatchEmail, #portalWoPattern').on('input', function() {
         if ($('#portalSampleSender').val() || $('#portalSampleSubject').val()) {
             runPortalRuleTest();
@@ -904,7 +948,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     window.copyPortalUrl = function() {
-        const url = $('#portalUrlDisplay').text();
+    const url = $('#portalUrlDisplay').attr('href') || $('#portalUrlDisplay').text();
         navigator.clipboard.writeText(url).then(() => {
             Swal.fire({ ...getSwalConfig(), icon: 'success', title: 'URL Copied!', timer: 1000, showConfirmButton: false });
         }).catch(() => {
@@ -925,7 +969,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const settingsData = {};
         $(this).serializeArray().forEach(item => settingsData[item.name] = item.value);
         settingsData['is_wo_form_enabled'] = $('#portalEnabled').is(':checked') ? 1 : 0;
-        settingsData['strategy_key'] = '';
+        const hasPortalStrategy = [
+            settingsData['match_from_email'],
+            settingsData['workorder_pattern'],
+            settingsData['pdf_profile'],
+            settingsData['pdf_start_marker'],
+            settingsData['pdf_end_marker']
+        ].some(value => String(value || '').trim() !== '');
+        settingsData['strategy_key'] = hasPortalStrategy ? 'custom' : '';
         settingsData['pdf_profile'] = intakeMode === 'email_with_pdf_attachment' ? ($('#portalPdfProfile').val() || '') : '';
 
         if (intakeMode === 'email_with_subject_workorder') {

@@ -503,8 +503,8 @@ if (isset($_GET['eircode'])) {
     }
 
     $debugMode = isset($_GET['debug']);
-    $superAdminEmail = $GLOBALS['super_admin_email'] ?? 'websites.dublin@gmail.com';
-    $isAdmin = isTrackerAuthenticated() && (($_SESSION['email'] ?? '') === $superAdminEmail);
+    $superAdminEmail = trackerSuperAdminEmail();
+    $isAdmin = isTrackerAuthenticated() && $superAdminEmail !== '' && (($_SESSION['email'] ?? '') === $superAdminEmail);
 
     if ($debugMode && !$isAdmin) {
         header('Content-Type: application/json');

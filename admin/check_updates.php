@@ -13,8 +13,7 @@ if (!isTrackerAuthenticated()) {
     exit();
 }
 
-$superAdminEmail = $GLOBALS['super_admin_email'] ?? 'websites.dublin@gmail.com';
-if (($_SESSION['email'] ?? '') !== $superAdminEmail) {
+if (!isTrackerSuperAdmin()) {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Forbidden']);
     exit();

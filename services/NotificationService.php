@@ -10,6 +10,53 @@ use PHPMailer\PHPMailer\Exception;
 
 class NotificationService {
 
+    private function trackerAppUrl(): string
+    {
+        if (function_exists('trackerAppUrl')) {
+            return trackerAppUrl();
+        }
+
+        $configured = trim((string) ($_SERVER['APP_URL'] ?? $_ENV['APP_URL'] ?? ''));
+        return $configured !== '' ? rtrim($configured, '/') : '';
+    }
+
+    private function defaultAssetLogoUrl(): string
+    {
+        $appUrl = $this->trackerAppUrl();
+        return $appUrl !== '' ? $appUrl . '/dist/images/logo.png' : '';
+    }
+
+    private function defaultSenderEmail(): string
+    {
+        return (string) ($GLOBALS['mail_from_address'] ?? $GLOBALS['mail_username'] ?? $_ENV['MAIL_FROM_ADDRESS'] ?? $_ENV['MAIL_USERNAME'] ?? 'no-reply@localhost');
+    }
+
+    private function defaultSenderName(string $fallback = 'Work Order Tracker'): string
+    {
+        return (string) ($GLOBALS['mail_from_name'] ?? $_ENV['MAIL_FROM_NAME'] ?? $fallback);
+    }
+
+    private function supportEmail(): string
+    {
+        return (string) ($GLOBALS['mail_from_address'] ?? $_ENV['MAIL_FROM_ADDRESS'] ?? $_ENV['MAIL_USERNAME'] ?? '');
+    }
+
+    private function configuredWorkorderDestinationEmail(): string
+    {
+        $settingsRes = $this->makeApiCall('GET', '/api/settings');
+        if ($settingsRes && ($settingsRes['success'] ?? false)) {
+            foreach ($settingsRes['data'] as $items) {
+                foreach ($items as $setting) {
+                    if ($setting['key'] === 'workorder_extraction_email' && !empty($setting['value'])) {
+                        return (string) $setting['value'];
+                    }
+                }
+            }
+        }
+
+        return (string) ($GLOBALS['mail_from_address'] ?? $_ENV['MAIL_FROM_ADDRESS'] ?? $_ENV['MAIL_USERNAME'] ?? '');
+    }
+
     public function __construct() {
         // Direct database connection is no longer used in this service.
     }
@@ -37,6 +84,11 @@ class NotificationService {
             'Authorization: Bearer ' . $apiToken,
             'Accept: application/json'
         ];
+
+        $tenantSlug = function_exists('trackerTenantSlug') ? trackerTenantSlug() : trim((string) ($_SERVER['TENANT_SLUG'] ?? $_ENV['TENANT_SLUG'] ?? ''));
+        if ($tenantSlug !== '') {
+            $headers[] = 'X-Tenant-Slug: ' . $tenantSlug;
+        }
 
         if (!empty($files)) {
             $post = [];
@@ -156,8 +208,6 @@ class NotificationService {
             $notifyNamesString = $GLOBALS['tracker_notify_names'] ?? $_ENV['TRACKER_NOTIFY_NAMES'] ?? '';
             $notifyNames = array_map('trim', explode(',', str_replace('"', '', $notifyNamesString)));
             $clientName = (string)($task['clientName'] ?? $task['client_name'] ?? '');
-            $isAspen = ((string)($task['client_id'] ?? '') === '214')
-                || stripos($clientName, 'aspen') !== false;
 
             if (!in_array($clientName, $notifyNames, true)) {
                 error_log("Completion Notify: Client " . ($clientName ?: ($task['client_id'] ?? 'unknown')) . " not enabled for notifications.");
@@ -174,11 +224,8 @@ class NotificationService {
             $mail->Port = $GLOBALS['mail_port'] ?? $_ENV['MAIL_PORT'] ?? 587;
 
             // Sender details
-            if ($isAspen) {
-                $mail->setFrom($GLOBALS['mail_username'] ?? 'admin@energyretrofitireland.ie', 'Aspen Property Management');
-            } else {
-                $mail->setFrom($GLOBALS['mail_username'] ?? 'noreply@energyretrofitireland.ie', 'ERI Work Order Tracker');
-            }
+            $portalName = $clientName !== '' ? $clientName : $this->defaultSenderName();
+            $mail->setFrom($this->defaultSenderEmail(), $portalName);
             
             // Recipients
             $recipients = [];
@@ -190,11 +237,6 @@ class NotificationService {
                 }
             }
 
-            if ($isAspen) {
-                $recipients[] = 'admin@energyretrofitireland.ie';
-                error_log("Aspen Mode: Added admin@energyretrofitireland.ie to recipients");
-            }
-            
             // Deduplicate and Validate
             $recipients = array_unique($recipients);
             $recipientAdded = false;
@@ -216,10 +258,15 @@ class NotificationService {
             $mail->isHTML(true);
             $mail->Subject = "Job Completed: " . ($task['po_number'] ?? 'N/A') . " - " . ($task['property'] ?? 'N/A');
             
+            $logoUrl = $this->defaultAssetLogoUrl();
+            $teamName = htmlspecialchars($portalName, ENT_QUOTES, 'UTF-8');
+            $logoHtml = $logoUrl !== ''
+                ? "<img src='{$logoUrl}' alt='{$teamName}' style='max-width: 200px;'>"
+                : '';
             $body = "
                 <div style='font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto;'>
                     <div style='text-align: center; margin-bottom: 20px;'>
-                        <img src='https://energyretrofitireland.ie/wp-content/uploads/2021/07/Energy-Retrofit-Ireland-Logo-600px.png' alt='Energy Retrofit Ireland' style='max-width: 200px;'>
+                        {$logoHtml}
                     </div>
                     <h2 style='color: #4f46e5; text-align: center;'>Work Order Completion Notice</h2>
                     <p>Hello <strong>" . htmlspecialchars($task['clientName'] ?? 'Client') . "</strong>,</p>
@@ -252,7 +299,7 @@ class NotificationService {
                     " : "<p style='color: #666; font-style: italic; text-align: center;'>(Google Sheet link not configured for this client)</p>") . "
 
                     <br>
-                    <p>Regards,<br><strong>Energy Retrofit Ireland Team</strong></p>
+                    <p>Regards,<br><strong>{$teamName}</strong></p>
                     <hr style='border: 0; border-top: 1px solid #eee; margin: 20px 0;'>
                     <p style='font-size: 10px; color: #999;'>This is an automated message. Please do not reply to this email.</p>
                 </div>
@@ -273,181 +320,6 @@ class NotificationService {
             return false;
         }
         return false;
-    }
-    
-    /**
-     * Send Aspen email notification with PDF
-     * 
-     * @param int $taskId Task ID
-     * @param array|null $data Optional task data to avoid DB query
-     * @return bool
-     */
-    public function sendAspenEmailNotification($taskId, $data = null) {
-        try {
-            // 0. Check notification eligibility from DB or .env
-            $notifyNamesString = $GLOBALS['tracker_notify_names'] ?? $_ENV['TRACKER_NOTIFY_NAMES'] ?? '';
-            $notifyNames = array_map('trim', explode(',', str_replace('"', '', $notifyNamesString)));
-            
-            if ($data) {
-                $task = $data;
-            } else {
-                // Fetch task details via API
-                $taskApiResponse = $this->makeApiCall('GET', "/api/tasks/{$taskId}");
-                $task = $this->extractResource($taskApiResponse, 'task');
-            }
-
-            if (!$task) return false;
-
-            // Check if this specific client name is in the allowed list
-            $clientName = $task['client_name'] ?? ($task['client']['name'] ?? '');
-            if (!in_array($clientName, $notifyNames)) {
-                error_log("Aspen Notify: Client '$clientName' not enabled for notifications.");
-                return false;
-            }
-
-            $po = $task['poNumber'] ?? $task['po_number'];
-            $addr = trim(($task['property'] ?? '') ? $task['property'] . " " : "") . ($task['location'] ?? '');
-            $priority = !empty($task['priority']) ? ucfirst($task['priority']) : 'Medium';
-            $contact = !empty($task['contact']) ? $task['contact'] : 'Not Provided';
-            $details = nl2br(htmlspecialchars($task['task'] ?? $task['heading']));
-            $invoiceEmail = $task['invoiceEmail'] ?? $task['invoice_email'] ?? '';
-
-            // 1. Generate PDF Buffer
-            // NOTE: generateAspenSPO still relies on a direct database connection.
-            // This function needs to be refactored to use API calls or be moved to the Laravel backend.
-            // For now, passing null for $conn, which will likely cause a fatal error.
-            $pdfContent = null; // Temporarily disable PDF generation
-            
-            // 2. Prepare PHPMailer
-            $mail = new PHPMailer(true);
-            $mail->isSMTP();
-            $mail->Host = $_ENV['MAIL_HOST'];
-            $mail->SMTPAuth = true;
-            $mail->Username = $_ENV['MAIL_USERNAME'];
-            $mail->Password = $_ENV['MAIL_PASSWORD'];
-            $mail->SMTPSecure = $_ENV['MAIL_ENCRYPTION'] ?? PHPMailer::ENCRYPTION_STARTTLS;
-            $mail->Port = $_ENV['MAIL_PORT'] ?? 587;
-
-            $mail->setFrom('admin@energyretrofitireland.ie', 'Aspen Property Management');
-            
-            // Add Recipients (Only Client)
-            $recipientAdded = false;
-            if (!empty($invoiceEmail)) {
-                $extras = explode(',', $invoiceEmail);
-                foreach ($extras as $e) {
-                    $trimmed = trim($e);
-                    if (filter_var($trimmed, FILTER_VALIDATE_EMAIL)) {
-                        $mail->addAddress($trimmed);
-                        $recipientAdded = true;
-                    }
-                }
-            }
-
-            if (!$recipientAdded) {
-                error_log("Aspen Notify Error: No valid recipients found for PO $po");
-                return false;
-            }
-            
-            // 3. Attach Generated PDF
-            if ($pdfContent) {
-                $mail->addStringAttachment($pdfContent, "SubcontractorPurchaseOrder - $po.pdf");
-                
-                // 4. ALSO Upload PDF to Google Drive for this PO via API
-                try {
-                    $tempPath = sys_get_temp_dir() . "/$po.pdf";
-                    file_put_contents($tempPath, $pdfContent);
-                    
-                    $filesToUpload = [
-                        'attachments' => [
-                            'tmp_name' => [$tempPath],
-                            'name'     => ["SubcontractorPurchaseOrder - $po.pdf"],
-                            'type'     => ['application/pdf'],
-                            'error'    => [UPLOAD_ERR_OK]
-                        ]
-                    ];
-                    
-                    $uploadApiResponse = $this->makeApiCall('POST', '/api/attachments/upload', ['po_number' => $po], $filesToUpload);
-                    
-                    if (!($uploadApiResponse['success'] ?? false)) {
-                        error_log("Aspen Drive Auto-Upload Failed via API: " . ($uploadApiResponse['message'] ?? 'Unknown error'));
-                    }
-                    unlink($tempPath); // Clean up temp file
-                } catch (Exception $driveEx) {
-                    error_log("Aspen Drive Auto-Upload Failed (API Call Error): " . $driveEx->getMessage());
-                }
-            }
-            
-            $mail->isHTML(true);
-            $mail->Subject = "Work Order $po $addr";
-            
-            $body = "
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <style>
-                    body, p, div { font-family: arial, helvetica, sans-serif; font-size: 14px; color: #000000; }
-                    p { margin: 0; padding: 0; line-height: 140% !important; }
-                </style>
-            </head>
-            <body style='background-color: #ECEFF1; padding: 40px 0; margin: 0;'>
-                <table width='100%' cellpadding='0' cellspacing='0' border='0' bgcolor='#ECEFF1'>
-                    <tr>
-                        <td align='center'>
-                            <table width='100%' cellpadding='0' cellspacing='0' border='0' style='width:100%; max-width:600px; border-radius:12px; background-color: #ffffff; margin: 0 auto; text-align: left;'>
-                                <tr>
-                                    <td style='padding: 40px;'>
-                                        <img height='40' src='https://aspenprop.ie/wp-content/uploads/2025/05/Aspen-Property-Services-Logo-e1747839536512-600x97.png' alt='Aspen Property Services'>
-                                        <div style='padding: 24px 0;'>
-                                            <p style='font-size: 20px; font-weight: 600; line-height: 32px; color: #333333;'>
-                                                Work Order $po from Aspen Property for Energy Retrofit Ireland
-                                            </p>
-                                        </div>
-                                        <div style='font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.6; color: #333;'>
-                                            <p>Dear Energy Retrofit Ireland,</p>
-                                            <br>
-                                            <p>Here's work order <strong>$po</strong>. Please find the attached Subcontractor Purchase Order PDF. Make sure this reference number appears on your invoice for reconciliation.</p>
-                                            <br>
-                                            <p>A Visit has been allocated to you via the Aspen Management Form and the Priority of the visit is <strong>$priority</strong>. We need this job completed where possible within our KPI timelines.</p>
-                                            <br>
-                                            <p>If you are unable to complete within these timelines please respond to this email confirming same.</p>
-                                            <br>
-                                            <p><strong style='color: #4f46e5; text-transform: uppercase; font-size: 11px;'>Site Address:</strong><br>$addr</p>
-                                            <br>
-                                            <p><strong style='color: #4f46e5; text-transform: uppercase; font-size: 11px;'>Tenant Contact Details:</strong><br>$contact</p>
-                                            <br>
-                                            <p><strong style='color: #4f46e5; text-transform: uppercase; font-size: 11px;'>Work Instructions:</strong><br>$details</p>
-                                            <br>
-                                            <p>If you have any questions, please contact us at <a href='mailto:info@energyretrofitireland.ie' style='color: #1188E6; text-decoration: none;'>info@energyretrofitireland.ie</a> or your contact in the management department.</p>
-                                            <br>
-                                            <p>Thanks,</p>
-                                            <p><strong>Aspen Property Management</strong></p>
-                                        </div>
-                                        <div style='margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px;'>
-                                            <span style='color: #8E8E8E; font-size: 11px;'>
-                                                Aspen Property Services, HuttonRead House, Steelstown, Rathcoole, Co. Kildare
-                                            </span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </table>
-                            <div style='padding: 20px 0; text-align: center;'>
-                                <img src='https://cdn.joblogic.com/bundles/images/JobLogic/SentByJoblogic2.png' width='121' alt='JobLogic'>
-                            </div>
-                        </td>
-                    </tr>
-                </table>
-            </body>
-            </html>
-            ";
-            
-            $mail->Body = $body;
-            $mail->AltBody = "New Aspen Work Order: $po\nAddress: $addr\nPriority: $priority\nContact: $contact\nDetails: " . strip_tags($details);
-            
-            return $mail->send();
-        } catch (Exception $e) {
-            error_log("Aspen Email Notify Error: " . $e->getMessage());
-            return false;
-        }
     }
     
     /**
@@ -569,21 +441,9 @@ class NotificationService {
             $eircodeHtml = htmlspecialchars($eircode !== '' ? $eircode : 'Not Provided', ENT_QUOTES, 'UTF-8');
             
             $companyName = htmlspecialchars((string)($client['name'] ?? 'Property Management'), ENT_QUOTES, 'UTF-8');
-            $logoUrl = $client['logo_url'] ?? ($_ENV['APP_URL'] ?? 'https://app.webdesign-dublin.com/') . 'dist/images/logo.png';
+            $logoUrl = $client['logo_url'] ?? $this->defaultAssetLogoUrl();
             
-            // Fetch Global Extraction Email from Settings
-            $destEmail = 'info@energyretrofitireland.ie'; // Default
-            $settingsRes = $this->makeApiCall('GET', '/api/settings');
-            if ($settingsRes && ($settingsRes['success'] ?? false)) {
-                foreach ($settingsRes['data'] as $group => $items) {
-                    foreach ($items as $setting) {
-                        if ($setting['key'] === 'workorder_extraction_email' && !empty($setting['value'])) {
-                            $destEmail = $setting['value'];
-                            break 2;
-                        }
-                    }
-                }
-            }
+            $destEmail = $this->configuredWorkorderDestinationEmail();
 
             $mail = new PHPMailer(true);
             $mail->isSMTP();
@@ -594,9 +454,10 @@ class NotificationService {
             $mail->SMTPSecure = $GLOBALS['mail_encryption'] ?? $_ENV['MAIL_ENCRYPTION'] ?? PHPMailer::ENCRYPTION_STARTTLS;
             $mail->Port = $GLOBALS['mail_port'] ?? $_ENV['MAIL_PORT'] ?? 587;
 
-            $mail->setFrom($GLOBALS['mail_username'] ?? 'admin@energyretrofitireland.ie', $companyName . ' Work Orders');
-            $mail->addAddress($destEmail);
-            $mail->addAddress('info@energyretrofitireland.ie'); // System backup/copy
+            $mail->setFrom($GLOBALS['mail_from_address'] ?? $GLOBALS['mail_username'] ?? $_ENV['MAIL_FROM_ADDRESS'] ?? $_ENV['MAIL_USERNAME'] ?? 'no-reply@localhost', $companyName . ' Work Orders');
+            if ($destEmail !== '') {
+                $mail->addAddress($destEmail);
+            }
 
             foreach ($attachments as $attachment) {
                 $path = $attachment['path'] ?? null;
@@ -651,7 +512,7 @@ class NotificationService {
                         <div style='margin: 0; line-height: 1.7; color: #334155;'>$details</div>
                     </div>
 
-                    <p style='font-size: 12px; color: #999; text-align: center;'>This is an automated transmission from the Energy Retrofit Ireland Portal.</p>
+                    <p style='font-size: 12px; color: #999; text-align: center;'>This is an automated transmission from the $companyName portal.</p>
                 </div>
             </div>";
 
@@ -667,13 +528,13 @@ class NotificationService {
      */
     public function sendProposalEmail($proposal) {
         try {
-            $companyName = $proposal['company']['company_name'] ?? 'Energy Retrofit Ireland';
-            $logoUrl = $proposal['company']['logo'] ?? ($_ENV['APP_URL'] ?? 'https://app.webdesign-dublin.com/') . 'dist/images/logo.png';
+            $companyName = $proposal['company']['company_name'] ?? 'Project Proposal';
+            $logoUrl = $proposal['company']['logo'] ?? $this->defaultAssetLogoUrl();
             $clientName = $proposal['lead']['client_name'];
             $clientEmail = $proposal['lead']['client_email'];
             
             // Generate Secure Public Link
-            $cleanAppUrl = rtrim($_ENV['APP_URL'] ?? 'https://app.webdesign-dublin.com/', '/');
+            $cleanAppUrl = $this->trackerAppUrl();
             $publicLink = "{$cleanAppUrl}/public/proposal.php?h={$proposal['hash']}";
 
             $mail = new PHPMailer(true);
@@ -685,7 +546,7 @@ class NotificationService {
             $mail->SMTPSecure = $GLOBALS['mail_encryption'] ?? $_ENV['MAIL_ENCRYPTION'] ?? PHPMailer::ENCRYPTION_STARTTLS;
             $mail->Port = $GLOBALS['mail_port'] ?? $_ENV['MAIL_PORT'] ?? 587;
 
-            $mail->setFrom($GLOBALS['mail_username'] ?? 'admin@energyretrofitireland.ie', $companyName);
+            $mail->setFrom($GLOBALS['mail_from_address'] ?? $GLOBALS['mail_username'] ?? $_ENV['MAIL_FROM_ADDRESS'] ?? $_ENV['MAIL_USERNAME'] ?? 'no-reply@localhost', $companyName);
             $mail->addAddress($clientEmail, $clientName);
             
             $mail->isHTML(true);

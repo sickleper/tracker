@@ -215,7 +215,7 @@ $statusOptions = ['Open', 'Pending', 'In Progress', 'On Hold', 'Completed', 'Clo
 
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Property Name</label>
-                    <input type="text" name="property" value="" class="w-full px-4 py-2 rounded-lg border-gray-300 placeholder-gray-300" placeholder="e.g. Iveagh Trust Flats">
+                    <input type="text" name="property" value="" class="w-full px-4 py-2 rounded-lg border-gray-300 placeholder-gray-300" placeholder="e.g. Apartment Block A">
                 </div>
 
                 <div>

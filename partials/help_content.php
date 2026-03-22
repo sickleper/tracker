@@ -14,7 +14,7 @@
             <li><b>Gmail Dashboard:</b> Access it via the red Google icon to see incoming job requests.</li>
             <li><b>AI Extraction:</b> The system automatically reads emails and PDFs to extract Site Addresses, Job Codes, and Contact Names.</li>
             <li><b>Importing:</b> One-click import pre-fills the new order form with all AI-extracted data.</li>
-            <li><b>Sequential POs:</b> Clients like Aspen and DND automatically get the next available PO number suggested.</li>
+            <li><b>Sequential POs:</b> Some client workflows automatically suggest the next available PO number.</li>
         </ul>
     </section>
     <section>

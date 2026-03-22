@@ -16,22 +16,11 @@ if (!isTrackerAuthenticated()) {
 $sessionUserId = (int) ($_SESSION['user_id'] ?? 0);
 $requestedUserId = $_GET['user_id'] ?? null;
 $year = $_GET['year'] ?? date('Y');
-$superAdminEmail = $GLOBALS['super_admin_email'] ?? 'websites.dublin@gmail.com';
-$isAdmin = (($_SESSION['email'] ?? '') === $superAdminEmail);
-
 $userId = $requestedUserId ?? $sessionUserId;
 
 if (!$userId) {
     echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
     exit;
-}
-
-if (!$isAdmin) {
-    if ($userId === 'all' || (int) $userId !== $sessionUserId) {
-        http_response_code(403);
-        echo json_encode(['status' => 'error', 'message' => 'Forbidden']);
-        exit;
-    }
 }
 
 try {

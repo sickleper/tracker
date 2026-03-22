@@ -19,19 +19,11 @@ if (!isTrackerAuthenticated()) {
 }
 
 $sessionUserId = (int) ($_SESSION['user_id'] ?? 0);
-$superAdminEmail = $GLOBALS['super_admin_email'] ?? 'websites.dublin@gmail.com';
-$isAdmin = (($_SESSION['email'] ?? '') === $superAdminEmail);
 $requestedUserId = (int) ($_POST['user_id'] ?? $sessionUserId);
 
 if ($sessionUserId <= 0) {
     http_response_code(401);
     echo json_encode(['status' => 'error', 'message' => 'User session not initialized']);
-    exit;
-}
-
-if (!$isAdmin && $requestedUserId !== $sessionUserId) {
-    http_response_code(403);
-    echo json_encode(['status' => 'error', 'message' => 'You can only book leave for yourself']);
     exit;
 }
 

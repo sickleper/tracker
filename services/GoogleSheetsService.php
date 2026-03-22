@@ -55,6 +55,11 @@ class GoogleSheetsService {
             'Accept: application/json'
         ];
 
+        $tenantSlug = function_exists('trackerTenantSlug') ? trackerTenantSlug() : trim((string) ($_SERVER['TENANT_SLUG'] ?? $_ENV['TENANT_SLUG'] ?? ''));
+        if ($tenantSlug !== '') {
+            $headers[] = 'X-Tenant-Slug: ' . $tenantSlug;
+        }
+
         if ($method === 'POST' || $method === 'PUT' || $method === 'PATCH') {
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
             $headers[] = 'Content-Type: application/json';

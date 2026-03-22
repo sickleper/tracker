@@ -29,6 +29,86 @@ if (!function_exists('isTrackerAuthenticated')) {
     }
 }
 
+if (!function_exists('trackerAppUrl')) {
+    function trackerAppUrl(): string
+    {
+        $configured = trim((string) ($_SERVER['APP_URL'] ?? $_ENV['APP_URL'] ?? ''));
+        if ($configured !== '') {
+            return rtrim($configured, '/');
+        }
+
+        $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+        $scheme = $https ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? '';
+
+        if ($host !== '') {
+            return $scheme . '://' . $host;
+        }
+
+        return '';
+    }
+}
+
+if (!function_exists('trackerSuperAdminEmail')) {
+    function trackerSuperAdminEmail(): string
+    {
+        return trim((string) ($GLOBALS['super_admin_email'] ?? $_ENV['SUPER_ADMIN_EMAIL'] ?? ''));
+    }
+}
+
+if (!function_exists('trackerTenantSlug')) {
+    function trackerTenantSlug(): string
+    {
+        return trim((string) ($_SERVER['TENANT_SLUG'] ?? $_ENV['TENANT_SLUG'] ?? ''));
+    }
+}
+
+if (!function_exists('gs')) {
+    function gs(string $key, mixed $default = null): mixed
+    {
+        if (array_key_exists($key, $GLOBALS)) {
+            return $GLOBALS[$key];
+        }
+        if (isset($_ENV[$key])) {
+            return $_ENV[$key];
+        }
+        $upper = strtoupper($key);
+        if (isset($_ENV[$upper])) {
+            return $_ENV[$upper];
+        }
+        return $default;
+    }
+}
+
+if (!function_exists('trackerEnvIntList')) {
+    function trackerEnvIntList(mixed $value): array
+    {
+        if (is_array($value)) {
+            return array_values(array_filter(array_map('intval', $value), static fn ($item) => $item > 0));
+        }
+
+        if (!is_string($value)) {
+            return [];
+        }
+
+        $value = trim($value);
+        if ($value === '') {
+            return [];
+        }
+
+        $decoded = json_decode($value, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            return array_values(array_filter(array_map('intval', $decoded), static fn ($item) => $item > 0));
+        }
+
+        return array_values(array_filter(
+            array_map('intval', array_map('trim', explode(',', $value))),
+            static fn ($item) => $item > 0
+        ));
+    }
+}
+
 // ... rest of env variables ...
 
 // Google Maps API Key
@@ -94,7 +174,7 @@ $tickets_cache_file = $_ENV['TICKETS_CACHE_FILE'] ?? 'cache/tickets_results.json
 $eircode_api_key = $_ENV['EIRCODE_API_KEY'] ?? '';
 
 // Google Analytics 4
-$ga4_property_id = $_ENV['GA4_PROPERTY_ID'] ?? '431987483';
+$ga4_property_id = $_ENV['GA4_PROPERTY_ID'] ?? '';
 $ga4_cache_file = $_ENV['GA4_CACHE_FILE'] ?? __DIR__ . '/cache/analytics2_data.json';
 
 // Google Drive
@@ -118,25 +198,16 @@ $google_stats_cache_file = $_ENV['GOOGLE_STATS_CACHE_FILE'] ?? 'cache/analytics_
 $gun_licence_upload_dir = $_ENV['GUN_LICENCE_UPLOAD_DIR'] ?? '/jobs/uploads/gun_license/';
 $gun_licence_web_dir = $_ENV['GUN_LICENCE_WEB_DIR'] ?? '/jobs/uploads/gun_license/';
 
-// Handyman
-$handyman_category_id = $_ENV['HANDYMAN_CATEGORY_ID'] ?? 5;
-
 // Heatmap
 $heatmap_cache_file = $_ENV['HEATMAP_CACHE_FILE'] ?? '/jobs/cache/leads_cache.json';
 $heatmap_api_key = $_ENV['HEATMAP_API_KEY'] ?? '';
 
 // Inventory
-$inventory_driver_ids = $_ENV['INVENTORY_DRIVER_IDS'] ?? [1, 2, 82, 89];
+$inventory_driver_ids = trackerEnvIntList($_ENV['INVENTORY_DRIVER_IDS'] ?? []);
 
 // Invoice2go
 $invoice2go_api_url = $_ENV['INVOICE2GO_API_URL'] ?? 'https://api.invoice2go.com/v2/invoices';
 $invoice2go_api_token = $_ENV['INVOICE2GO_API_TOKEN'] ?? '';
-
-// Bathrooms
-$bathrooms_category_id = $_ENV['BATHROOMS_CATEGORY_ID'] ?? 4;
-
-// Retrofit
-$retrofit_category_id = $_ENV['RETROFIT_CATEGORY_ID'] ?? 1;
 
 // Login
 $login_auth_file = $_ENV['LOGIN_AUTH_FILE'] ?? '';

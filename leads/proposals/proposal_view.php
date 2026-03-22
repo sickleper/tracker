@@ -30,7 +30,7 @@ if (!$proposal) {
 }
 
 $logoUrl = $proposal['company']['logo'] ?? 'https://via.placeholder.com/150';
-$publicProposalUrl = rtrim($_ENV['APP_URL'] ?? 'https://app.webdesign-dublin.com/', '/') . '/public/proposal.php?h=' . rawurlencode($proposal['hash'] ?? '');
+$publicProposalUrl = trackerAppUrl() . '/public/proposal.php?h=' . rawurlencode($proposal['hash'] ?? '');
 ?>
 
 <div class="max-w-4xl mx-auto px-4 py-12">
@@ -61,7 +61,7 @@ $publicProposalUrl = rtrim($_ENV['APP_URL'] ?? 'https://app.webdesign-dublin.com
                 <div class="space-y-4">
                     <img src="<?php echo $logoUrl; ?>" class="max-h-20">
                     <div class="text-xs text-slate-500 font-medium">
-                        <p class="font-bold text-slate-900"><?php echo htmlspecialchars($proposal['company']['company_name'] ?? 'Energy Retrofit Ireland'); ?></p>
+                        <p class="font-bold text-slate-900"><?php echo htmlspecialchars($proposal['company']['company_name'] ?? 'Your Company'); ?></p>
                         <p><?php echo nl2br(htmlspecialchars($proposal['company']['address'] ?? "2 Barberstown Ln N, Clonsilla
 Co. Dublin, D15 V08R")); ?></p>
                     </div>
@@ -159,7 +159,7 @@ Co. Dublin, D15 V08R")); ?></p>
 
             <!-- Footer -->
             <div class="p-12 bg-slate-900 text-white text-center">
-                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-2">Thank you for choosing <?php echo htmlspecialchars($proposal['company']['company_name'] ?? 'Energy Retrofit Ireland'); ?></p>
+                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-2">Thank you for choosing <?php echo htmlspecialchars($proposal['company']['company_name'] ?? 'our team'); ?></p>
                 <p class="text-xs text-slate-400">This proposal is valid until <?php echo date('d M Y', strtotime($proposal['valid_till'])); ?>. Please contact us if you have any questions.</p>
             </div>
         </div>

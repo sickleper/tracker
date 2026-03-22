@@ -831,11 +831,16 @@ $(document).ready(function() {
         ]
     });
     
+    function fuelStatsUrl() {
+        const vehicleId = $('#vehicleSelectReport').val() || '';
+        return `fetch_fuel_data.php?action=stats&vehicle_id=${encodeURIComponent(vehicleId)}`;
+    }
+
     // Analytics Efficiency Table
     const resultsTable = $('#resultsTable').DataTable({
         searching: false, responsive: true, autoWidth: false, paging: true, info: false, pageLength: 10,
         dom: 'rtp',
-        ajax: { url: 'fetch_fuel_data.php?action=stats&vehicle_id=1', dataSrc: 'data' },
+        ajax: { url: fuelStatsUrl(), dataSrc: 'data' },
         columns: [
             { data: 'name', className: 'px-6 py-4 font-bold text-gray-900 dark:text-gray-100' },
             { data: 'license_plate', className: 'px-6 py-4 text-gray-500 dark:text-gray-400 font-mono text-[10px] font-black uppercase' },
@@ -851,7 +856,7 @@ $(document).ready(function() {
 
     $('#vehicleSelect').on('change', function () { logTable.ajax.url('fetch_fuel_logs.php?vehicle_id=' + $(this).val()).load(); });
     $('#monthFilter, #vehicleFilter').on('change', fetchAnomaliesReport);
-    $('#vehicleSelectReport').on('change', function() { resultsTable.ajax.url(`fetch_fuel_data.php?action=stats&vehicle_id=${$(this).val()}`).load(); });
+    $('#vehicleSelectReport').on('change', function() { resultsTable.ajax.url(fuelStatsUrl()).load(); });
 
     // Function to determine SweetAlert2 theme based on dark mode
     function getSwalTheme() {

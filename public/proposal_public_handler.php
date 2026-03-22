@@ -68,7 +68,10 @@ function sendAcceptanceNotification($proposal, $signerName) {
         $mail->SMTPSecure = $GLOBALS['mail_encryption'] ?? $_ENV['MAIL_ENCRYPTION'] ?? 'tls';
         $mail->Port = $GLOBALS['mail_port'] ?? $_ENV['MAIL_PORT'] ?? 587;
 
-        $adminEmail = $GLOBALS['mail_username'] ?? $_ENV['MAIL_FROM_ADDRESS'] ?? 'info@energyretrofitireland.ie';
+        $adminEmail = $GLOBALS['mail_from_address'] ?? $GLOBALS['mail_username'] ?? $_ENV['MAIL_FROM_ADDRESS'] ?? $_ENV['MAIL_USERNAME'] ?? '';
+        if ($adminEmail === '') {
+            throw new Exception('Mail sender address is not configured.');
+        }
         $mail->setFrom($adminEmail, 'System Alerts');
         $mail->addAddress($adminEmail);
         if ($safeClientEmail && filter_var($safeClientEmail, FILTER_VALIDATE_EMAIL)) {

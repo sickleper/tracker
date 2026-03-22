@@ -34,6 +34,11 @@ class GmailIntegrationService {
             'Accept: application/json'
         ];
 
+        $tenantSlug = function_exists('trackerTenantSlug') ? trackerTenantSlug() : trim((string) ($_SERVER['TENANT_SLUG'] ?? $_ENV['TENANT_SLUG'] ?? ''));
+        if ($tenantSlug !== '') {
+            $headers[] = 'X-Tenant-Slug: ' . $tenantSlug;
+        }
+
         if (!empty($files)) {
             $post = [];
             foreach ($data as $key => $value) {
@@ -84,6 +89,63 @@ class GmailIntegrationService {
         return $decoded_response;
     }
 
+    private function extractSettingValue(array $settingsResponse, string $key): ?string
+    {
+        $groups = $settingsResponse['data'] ?? [];
+        if (!is_array($groups)) {
+            return null;
+        }
+
+        foreach ($groups as $groupSettings) {
+            if (!is_array($groupSettings)) {
+                continue;
+            }
+
+            foreach ($groupSettings as $setting) {
+                if (($setting['key'] ?? null) === $key) {
+                    $value = $setting['value'] ?? null;
+                    return is_string($value) ? trim($value) : null;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function resolveEmailSyncCategoryConfig(): ?array
+    {
+        $extractionEmail = null;
+
+        try {
+            $settingsResponse = $this->makeApiCall('GET', '/api/settings');
+            if ($settingsResponse && ($settingsResponse['success'] ?? false)) {
+                $extractionEmail = $this->extractSettingValue($settingsResponse, 'workorder_extraction_email');
+            }
+        } catch (Exception $e) {
+            error_log('Gmail PDF Attach Warning: Could not fetch settings: ' . $e->getMessage());
+        }
+
+        $categoriesResponse = $this->makeApiCall('GET', '/api/leads/categories?email_sync_only=1&all=1');
+        if (!$categoriesResponse || !($categoriesResponse['success'] ?? false)) {
+            return null;
+        }
+
+        $categories = $categoriesResponse['data'] ?? [];
+        if (!is_array($categories) || empty($categories)) {
+            return null;
+        }
+
+        if (!empty($extractionEmail)) {
+            foreach ($categories as $category) {
+                if (strcasecmp((string) ($category['email'] ?? ''), $extractionEmail) === 0) {
+                    return $category;
+                }
+            }
+        }
+
+        return $categories[0] ?? null;
+    }
+
     /**
      * Download and attach Gmail PDFs to a PO
      *
@@ -96,13 +158,11 @@ class GmailIntegrationService {
         if (empty($pdfNames) || empty($uid)) return 0;
 
         try {
-            // Fetch Retro-Fit (ID 1) category details for IMAP config via API
-            $catResponse = $this->makeApiCall('GET', '/api/leads/categories/1');
-            if (!$catResponse || !($catResponse['success'] ?? false)) {
-                error_log("Gmail PDF Attach Error: Could not fetch category config via API.");
+            $config = $this->resolveEmailSyncCategoryConfig();
+            if (empty($config)) {
+                error_log("Gmail PDF Attach Error: Could not resolve an email sync category config.");
                 return 0;
             }
-            $config = $catResponse['data'];
 
             $cm     = new Webklex\PHPIMAP\ClientManager();
             $client = $cm->make([

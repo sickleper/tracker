@@ -9,3 +9,4 @@
 # OS/editor noise
 .DS_Store
 Thumbs.db
+leads/debug.log

@@ -13,8 +13,8 @@ if (!isTrackerAuthenticated()) {
     exit;
 }
 
-// SECURITY: Only allow websites.dublin@gmail.com to access backup actions (DB priority)
-$superAdminEmail = $GLOBALS['super_admin_email'] ?? 'websites.dublin@gmail.com';
+// SECURITY: Only allow the configured super admin to access backup actions
+$superAdminEmail = trackerSuperAdminEmail();
 if (($_SESSION['email'] ?? '') !== $superAdminEmail) {
     http_response_code(403);
     echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);

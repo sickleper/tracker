@@ -144,7 +144,7 @@
                     <div class="text-xs text-gray-500 dark:text-gray-400">ID: <?php echo $wo['id']; ?></div>
                     <div class="flex items-center gap-4">
                         <?php if (!empty($wo['assignedUser']) && !empty($wo['assignedUser']['hash'])): ?>
-                            <a href="https://app.webdesign-dublin.com/public/public_view.php?hash=<?php echo $wo['assignedUser']['hash']; ?>" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-800 text-sm" title="Open Public Link"><i class="fas fa-link"></i></a>
+                            <a href="<?php echo htmlspecialchars(trackerAppUrl() . '/public/public_view.php?hash=' . $wo['assignedUser']['hash']); ?>" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-800 text-sm" title="Open Public Link"><i class="fas fa-link"></i></a>
                         <?php endif; ?>
                         <button onclick="openSummary(<?php echo $wo['id']; ?>)" class="text-blue-600 hover:text-blue-800 text-sm" title="View Summary"><i class="fas fa-eye"></i></button>
                         <button onclick="showHistory(<?php echo $wo['id']; ?>)" class="text-gray-500 hover:text-gray-700 text-sm" title="View History"><i class="fas fa-history"></i></button>

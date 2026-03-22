@@ -94,7 +94,7 @@
                             </td>
                             <td class="px-1 py-2 text-center">
                                 <div class="flex items-center gap-1 justify-center">
-                                    <select onchange="const newUrl = this.options[this.selectedIndex].dataset.hash ? 'https://app.webdesign-dublin.com/public/public_view.php?hash=' + this.options[this.selectedIndex].dataset.hash : '#'; updateCell(<?php echo $wo['id']; ?>, 'assignedTo', this.value); this.closest('tr').querySelector('.public-link-cell a').href = newUrl;" class="bg-transparent border-none p-0 focus:ring-0 text-center text-[10px] w-full dark:text-gray-200">
+                                    <select onchange="const publicBaseUrl = <?php echo json_encode(trackerAppUrl()); ?>; const newUrl = this.options[this.selectedIndex].dataset.hash && publicBaseUrl ? publicBaseUrl + '/public/public_view.php?hash=' + this.options[this.selectedIndex].dataset.hash : '#'; updateCell(<?php echo $wo['id']; ?>, 'assignedTo', this.value); this.closest('tr').querySelector('.public-link-cell a').href = newUrl;" class="bg-transparent border-none p-0 focus:ring-0 text-center text-[10px] w-full dark:text-gray-200">
                                         <option value="" class="dark:bg-slate-900">Unassigned</option>
                                         <?php foreach ($users as $u): ?>
                                             <option value="<?php echo $u['id']; ?>" class="dark:bg-slate-900" <?php echo (($wo['assignedTo'] ?? $wo['assigned_to'] ?? 0) == $u['id']) ? 'selected' : ''; ?> data-hash="<?php echo htmlspecialchars($u['hash'] ?? ''); ?>">
@@ -173,7 +173,7 @@
                                         </td>
                                         <td class="px-6 py-3 text-center public-link-cell">
                                             <?php if (!empty($wo['assignedUser']) && !empty($wo['assignedUser']['hash'])): ?>
-                                                <a href="https://app.webdesign-dublin.com/public/public_view.php?hash=<?php echo $wo['assignedUser']['hash']; ?>" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-900" title="Open Public Link"><i class="fas fa-link"></i></a>
+                                                <a href="<?php echo htmlspecialchars(trackerAppUrl() . '/public/public_view.php?hash=' . $wo['assignedUser']['hash']); ?>" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-900" title="Open Public Link"><i class="fas fa-link"></i></a>
                                             <?php endif; ?>
                                         </td>                            <td class="px-1 py-2 text-center whitespace-nowrap">
                                 <div class="relative inline-block text-left group/action">

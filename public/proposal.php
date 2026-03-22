@@ -17,7 +17,8 @@ if (!$proposal) {
     die("<div style='text-align:center; padding:50px; font-family:sans-serif;'><h2>Proposal Not Found</h2><p>This link may have expired or is invalid.</p></div>");
 }
 
-$logoUrl = $proposal['company']['logo'] ?? 'https://app.webdesign-dublin.com/dist/images/logo.png';
+$fallbackLogoUrl = trackerAppUrl() !== '' ? trackerAppUrl() . '/dist/images/logo.png' : '../dist/images/logo.png';
+$logoUrl = $proposal['company']['logo'] ?? $fallbackLogoUrl;
 $status = $proposal['status'] ?? 'waiting';
 $proposalHashJson = json_encode($hash, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
 ?>

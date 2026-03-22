@@ -7,8 +7,7 @@ if (!isTrackerAuthenticated()) {
     exit();
 }
 
-$superAdminEmail = $GLOBALS['super_admin_email'] ?? 'websites.dublin@gmail.com';
-if (($_SESSION['email'] ?? '') !== $superAdminEmail) {
+if (!isTrackerSuperAdmin()) {
     header('Location: ../index.php');
     exit();
 }
@@ -99,11 +98,30 @@ include '../nav.php';
     </div>
 
     <div class="grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-6">
-        <div class="card-base border-none">
-            <div class="section-header">
-                <h3><i class="fas fa-rocket text-indigo-400 mr-2"></i> Run Deploy</h3>
-                <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400">Allowed branches only. No arbitrary shell input.</p>
+        <div class="space-y-6">
+            <?php if ($workingTreeDirty): ?>
+            <div class="card-base border-amber-200 dark:border-amber-900/40 bg-amber-50/30 dark:bg-amber-950/10">
+                <div class="section-header">
+                    <h3><i class="fas fa-save text-amber-500 mr-2"></i> Commit Local Changes</h3>
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-amber-600/60">Resolve dirty working tree before deploy</p>
+                </div>
+                <form id="commitForm" class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Commit Message</label>
+                        <textarea id="commitMessage" name="message" rows="2" required placeholder="Describe what you changed..." class="w-full p-4 bg-white dark:bg-slate-950 border border-amber-200 dark:border-amber-900/50 rounded-2xl text-sm font-medium dark:text-white outline-none focus:ring-2 focus:ring-amber-500"></textarea>
+                    </div>
+                    <button type="submit" id="runCommitBtn" class="w-full bg-amber-600 hover:bg-amber-700 text-white px-6 py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3">
+                        <i class="fas fa-check-double"></i> Stage & Commit
+                    </button>
+                </form>
             </div>
+            <?php endif; ?>
+
+            <div class="card-base border-none">
+                <div class="section-header">
+                    <h3><i class="fas fa-rocket text-indigo-400 mr-2"></i> Run Deploy</h3>
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400">Allowed branches only. No arbitrary shell input.</p>
+                </div>
             <form id="deployForm" class="space-y-6">
                 <div>
                     <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Branch</label>
@@ -206,6 +224,39 @@ $(document).ready(function() {
 $('#checkUpdatesBtn').on('click', function(e) {
     e.preventDefault();
     checkUpdates();
+});
+
+$('#commitForm').on('submit', function(e) {
+    e.preventDefault();
+    const btn = $('#runCommitBtn');
+    const original = btn.html();
+    const message = $('#commitMessage').val();
+    
+    btn.prop('disabled', true).html('<i class="fas fa-circle-notch fa-spin"></i> Committing...');
+    
+    $.ajax({
+        url: 'commit_runner.php',
+        method: 'POST',
+        data: { message: message },
+        success: function(res) {
+            btn.prop('disabled', false).html(original);
+            $('#deployOutput').text(res.output || res.message);
+            
+            Swal.fire({
+                icon: res.success ? 'success' : 'error',
+                title: res.success ? 'Commit Success' : 'Commit Failed',
+                text: res.message,
+                theme: getSwalTheme()
+            }).then(() => {
+                if (res.success) window.location.reload();
+            });
+        },
+        error: function(xhr) {
+            btn.prop('disabled', false).html(original);
+            const message = xhr.responseJSON?.message || 'Commit request failed.';
+            Swal.fire({ icon: 'error', title: 'Error', text: message, theme: getSwalTheme() });
+        }
+    });
 });
 
 $('#deployForm').on('submit', function(e) {

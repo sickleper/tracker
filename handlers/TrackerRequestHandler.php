@@ -40,6 +40,11 @@ class TrackerRequestHandler {
             'Accept: application/json'
         ];
 
+        $tenantSlug = function_exists('trackerTenantSlug') ? trackerTenantSlug() : trim((string) ($_SERVER['TENANT_SLUG'] ?? $_ENV['TENANT_SLUG'] ?? ''));
+        if ($tenantSlug !== '') {
+            $headers[] = 'X-Tenant-Slug: ' . $tenantSlug;
+        }
+
         if (!empty($files)) {
             $post = [];
             foreach ($data as $key => $value) {
@@ -210,18 +215,6 @@ class TrackerRequestHandler {
      * Handle task creation
      */
     private function handleCreate() {
-        // TEMPORARY: Email Only Mode for Aspen
-        if (isset($_POST['email_only']) && $_POST['email_only'] == '1') {
-            $this->notificationService->sendAspenEmailNotification(0, $_POST);
-            echo "<script>
-                window.parent.postMessage({ type: 'order_saved', message: 'The Aspen email has been sent successfully.', clientId: '214' }, '*');
-                if (window.top === window.parent) {
-                    window.top.location.href = 'index.php?client_filter=214&msg=email_sent';
-                }
-            </script>";
-            exit;
-        }
-
         $po = trim($_POST['poNumber'] ?? '');
         if ($po === '') $po = '000000';
 

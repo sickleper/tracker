@@ -34,21 +34,5 @@ function nullify($value) {
     return ($trimmed === '') ? null : $trimmed;
 }
 
-// Helper to validate task ID (No longer needed, validation handled by Laravel API)
-// function validateTaskId($id) {
-//     $id = filter_var($id, FILTER_VALIDATE_INT);
-//     if ($id === false || $id <= 0) {
-//         throw new Exception("Invalid task ID");
-//     }
-//     return $id;
-// }
 
-// Helper to log changes to tracker_history (No longer needed, handled by Laravel API)
-// function logHistory($conn, $taskId, $fieldName, $oldValue, $newValue) {
-//     if ($oldValue == $newValue) return;
-//     $userId = $_SESSION['user_id'] ?? null;
-//     $stmt = $conn->prepare("INSERT INTO tracker_history (task_id, user_id, field_name, old_value, new_value) VALUES (?, ?, ?, ?, ?)");
-//     $stmt->bind_param("iisss", $taskId, $userId, $fieldName, $oldValue, $newValue);
-//     $stmt->execute();
-//     $stmt->close();
-// }
+

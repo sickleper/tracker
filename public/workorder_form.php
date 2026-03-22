@@ -29,7 +29,8 @@ if (!($client['is_wo_form_enabled'] ?? false)) {
 
 // Client Branding & Config
 $companyName = $client['name'] ?? 'Property Management';
-$logoUrl = !empty($client['logo_url']) ? $client['logo_url'] : ($_ENV['APP_URL'] ?? 'https://app.webdesign-dublin.com/') . 'dist/images/logo.png';
+$fallbackLogoUrl = trackerAppUrl() !== '' ? trackerAppUrl() . '/dist/images/logo.png' : '../dist/images/logo.png';
+$logoUrl = !empty($client['logo_url']) ? $client['logo_url'] : $fallbackLogoUrl;
 $prefix = $client['wo_prefix'] ?? 'WO-';
 $destEmail = $client['wo_destination_email'] ?? '';
 
@@ -260,7 +261,7 @@ $primaryColor = "indigo"; // We could make this dynamic too if needed
                     </div>
 
                     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Secure transmission | Energy Retrofit Ireland</p>
+                        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Secure transmission | <?php echo htmlspecialchars($companyName); ?></p>
                         <button type="submit" class="inline-flex items-center justify-center gap-3 rounded-3xl bg-slate-950 px-7 py-4 font-black uppercase tracking-[0.18em] text-white shadow-2xl transition hover:scale-[1.01] hover:bg-indigo-600 active:scale-[0.99] dark:bg-indigo-600 dark:hover:bg-indigo-500">
                             <i class="fas fa-paper-plane text-emerald-300"></i> Dispatch Work Order
                         </button>

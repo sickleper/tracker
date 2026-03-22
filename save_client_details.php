@@ -14,6 +14,13 @@ if (!isTrackerAuthenticated()) {
     exit();
 }
 
+$superAdminEmail = trackerSuperAdminEmail();
+if ($superAdminEmail === '' || (($_SESSION['email'] ?? '') !== $superAdminEmail)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Admin access required']);
+    exit();
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $clientId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
     

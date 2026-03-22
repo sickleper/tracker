@@ -18,13 +18,6 @@ if (!isTrackerAuthenticated()) {
     exit;
 }
 
-$superAdminEmail = $GLOBALS['super_admin_email'] ?? 'websites.dublin@gmail.com';
-if (($_SESSION['email'] ?? '') !== $superAdminEmail) {
-    http_response_code(403);
-    echo json_encode(['status' => 'error', 'message' => 'Admin access required']);
-    exit;
-}
-
 $id = $_POST['leave_id'] ?? null;
 $status = $_POST['status'] ?? null;
 

@@ -13,8 +13,7 @@ if (!isTrackerAuthenticated()) {
     exit();
 }
 
-$superAdminEmail = $GLOBALS['super_admin_email'] ?? 'websites.dublin@gmail.com';
-if (($_SESSION['email'] ?? '') !== $superAdminEmail) {
+if (!isTrackerSuperAdmin()) {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Forbidden']);
     exit();
@@ -37,6 +36,7 @@ if (!in_array($branch, $allowedBranches, true)) {
 $repoDir = '/home/workorders/trackers';
 $scriptPath = $repoDir . '/deploy.sh';
 $logDir = $repoDir . '/storage/deploy_logs';
+$lockPath = $logDir . '/deploy.lock';
 
 if (!is_dir($repoDir . '/.git')) {
     http_response_code(503);
@@ -53,6 +53,28 @@ if (!is_dir($logDir) && !mkdir($logDir, 0775, true) && !is_dir($logDir)) {
     exit();
 }
 
+$lockHandle = fopen($lockPath, 'c+');
+if ($lockHandle === false) {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Failed to create deploy lock file']);
+    exit();
+}
+
+if (!flock($lockHandle, LOCK_EX | LOCK_NB)) {
+    fclose($lockHandle);
+    http_response_code(409);
+    echo json_encode(['success' => false, 'message' => 'A deploy is already running. Please wait for it to finish.']);
+    exit();
+}
+
+ftruncate($lockHandle, 0);
+fwrite($lockHandle, json_encode([
+    'started_at' => date('c'),
+    'requested_by' => $_SESSION['email'] ?? 'unknown',
+    'branch' => $branch,
+]) . PHP_EOL);
+fflush($lockHandle);
+
 $timestamp = date('Ymd-His');
 $logPath = $logDir . '/deploy-' . $timestamp . '.log';
 
@@ -66,23 +88,28 @@ $command = "export HOME=" . escapeshellarg($userHome) . " && export GIT_SSH_COMM
 
 $output = [];
 $exitCode = 1;
-exec($command, $output, $exitCode);
+try {
+    exec($command, $output, $exitCode);
 
-$header = [
-    'Deploy Time: ' . date('Y-m-d H:i:s'),
-    'Requested By: ' . ($_SESSION['email'] ?? 'unknown'),
-    'Branch: ' . $branch,
-    'Exit Code: ' . $exitCode,
-    str_repeat('-', 60),
-];
+    $header = [
+        'Deploy Time: ' . date('Y-m-d H:i:s'),
+        'Requested By: ' . ($_SESSION['email'] ?? 'unknown'),
+        'Branch: ' . $branch,
+        'Exit Code: ' . $exitCode,
+        str_repeat('-', 60),
+    ];
 
-file_put_contents($logPath, implode(PHP_EOL, array_merge($header, $output)) . PHP_EOL);
+    file_put_contents($logPath, implode(PHP_EOL, array_merge($header, $output)) . PHP_EOL);
 
-echo json_encode([
-    'success' => $exitCode === 0,
-    'message' => $exitCode === 0 ? 'Deploy completed successfully.' : 'Deploy failed.',
-    'branch' => $branch,
-    'exit_code' => $exitCode,
-    'log_path' => $logPath,
-    'output' => implode("\n", $output),
-]);
+    echo json_encode([
+        'success' => $exitCode === 0,
+        'message' => $exitCode === 0 ? 'Deploy completed successfully.' : 'Deploy failed.',
+        'branch' => $branch,
+        'exit_code' => $exitCode,
+        'log_path' => $logPath,
+        'output' => implode("\n", $output),
+    ]);
+} finally {
+    flock($lockHandle, LOCK_UN);
+    fclose($lockHandle);
+}

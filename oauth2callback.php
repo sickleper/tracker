@@ -1,7 +1,7 @@
 <?php
 ini_set('display_errors', 'Off');
 ini_set('log_errors', 'On');
-ini_set('error_log', '/var/log/virtualmin/app.webdesign-dublin.com_error_log'); // Explicitly set the error log file
+ini_set('error_log', $_SERVER['TRACKER_ERROR_LOG'] ?? $_ENV['TRACKER_ERROR_LOG'] ?? '/tmp/tracker_oauth_error.log');
 ini_set('session.save_path', '/home/workorders/tmp');
 
 require_once '../vendor/autoload.php';
@@ -136,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['login_mode'] ?? '') === 'a
         renderLoginScreen($data['message'] ?? 'Invalid login details.');
     }
 
-    $superAdminEmail = $GLOBALS['super_admin_email'] ?? 'websites.dublin@gmail.com';
+    $superAdminEmail = trackerSuperAdminEmail();
     if (($data['email'] ?? '') !== $superAdminEmail) {
         $revoke = curl_init();
         curl_setopt($revoke, CURLOPT_URL, rtrim($_ENV['LARAVEL_API_URL'] ?? '', '/') . '/api/logout');
@@ -153,7 +153,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['login_mode'] ?? '') === 'a
 
     $_SESSION['api_token'] = $data['token'];
     $_SESSION['user_id'] = $data['user_id'] ?? null;
+    $_SESSION['tenant_id'] = $data['tenant_id'] ?? ($_SESSION['tenant_id'] ?? null);
     $_SESSION['user_auth_id'] = $data['user_auth_id'] ?? null;
+    $_SESSION['role_id'] = $data['role_id'] ?? ($_SESSION['role_id'] ?? null);
+    $_SESSION['is_office'] = !empty($data['is_office']);
     $_SESSION['user_name'] = $data['name'] ?? 'Admin';
     $_SESSION['user_email'] = $data['email'] ?? $email;
     $_SESSION['email'] = $data['email'] ?? $email;
@@ -231,7 +234,10 @@ if (isset($_GET['code'])) {
 
         $_SESSION['api_token'] = $api_data['token'];
         $_SESSION['user_id'] = $api_data['user_id'];
+        $_SESSION['tenant_id'] = $api_data['tenant_id'] ?? ($_SESSION['tenant_id'] ?? null);
         $_SESSION['user_auth_id'] = $api_data['user_auth_id']; // Assuming user_auth_id is returned by the API
+        $_SESSION['role_id'] = $api_data['role_id'] ?? ($_SESSION['role_id'] ?? null);
+        $_SESSION['is_office'] = !empty($api_data['is_office']);
         $_SESSION['user_name'] = $api_data['name'];
         $_SESSION['user_email'] = $api_data['email'];
         $_SESSION['email'] = $api_data['email'];

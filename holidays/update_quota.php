@@ -18,8 +18,7 @@ if (!isTrackerAuthenticated()) {
     exit;
 }
 
-$superAdminEmail = $GLOBALS['super_admin_email'] ?? 'websites.dublin@gmail.com';
-if (($_SESSION['email'] ?? '') !== $superAdminEmail) {
+if (!isTrackerAdminUser()) {
     http_response_code(403);
     echo json_encode(['status' => 'error', 'message' => 'Admin access required']);
     exit;

@@ -10,7 +10,7 @@ if (!isTrackerAuthenticated()) {
 }
 
 // RESTRICT: Only Websites Dublin can access admin
-$superAdminEmail = $GLOBALS['super_admin_email'] ?? 'websites.dublin@gmail.com';
+$superAdminEmail = trackerSuperAdminEmail();
 if (($_SESSION['email'] ?? '') !== $superAdminEmail) {
     header('Location: ../index.php');
     exit();
@@ -28,8 +28,14 @@ include '../nav.php';
             <p class="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-widest mt-1">Manage users, project categories, and global settings.</p>
         </div>
         <div class="flex gap-3">
+            <a href="profile.php" class="bg-white dark:bg-slate-900 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-slate-700 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-sky-50 dark:hover:bg-slate-800 transition-all active:scale-95 shadow-xl flex items-center gap-2">
+                <i class="fas fa-id-card"></i> Profile
+            </a>
             <a href="client_portals.php" class="bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-slate-700 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 dark:hover:bg-slate-800 transition-all active:scale-95 shadow-xl flex items-center gap-2">
                 <i class="fas fa-user-shield"></i> Client Portals
+            </a>
+            <a href="tenants.php" class="bg-white dark:bg-slate-900 text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-slate-700 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-violet-50 dark:hover:bg-slate-800 transition-all active:scale-95 shadow-xl flex items-center gap-2">
+                <i class="fas fa-building"></i> Tenants
             </a>
             <a href="deploy.php" class="bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-slate-700 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-50 dark:hover:bg-slate-800 transition-all active:scale-95 shadow-xl flex items-center gap-2">
                 <i class="fas fa-rocket"></i> Deploy
@@ -80,6 +86,7 @@ include '../nav.php';
                         <thead class="table-header-row">
                             <tr>
                                 <th class="px-6 py-4 text-left">Category Name</th>
+                                <th class="px-6 py-4 text-left">Logo</th>
                                 <th class="px-6 py-4 text-left">Website</th>
                                 <th class="px-6 py-4 text-center">System Status</th>
                                 <th class="px-6 py-4 text-right">Actions</th>
@@ -243,6 +250,16 @@ include '../nav.php';
                         <div>
                             <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Logo URL</label>
                             <input type="text" name="logo_url" id="editCatLogo" class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                            <div class="mt-3 flex items-center gap-4 rounded-2xl border border-dashed border-gray-200 dark:border-slate-800 bg-gray-50/80 dark:bg-slate-950/60 p-4">
+                                <div id="editCatLogoPreviewBox" class="w-16 h-16 rounded-2xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 flex items-center justify-center overflow-hidden shrink-0">
+                                    <img id="editCatLogoPreview" src="" alt="Category logo preview" class="hidden w-full h-full object-contain">
+                                    <i id="editCatLogoPreviewPlaceholder" class="fas fa-image text-gray-300 dark:text-slate-700 text-xl"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="text-[10px] font-black uppercase tracking-widest text-gray-400">Logo Preview</p>
+                                    <p id="editCatLogoPreviewText" class="mt-1 text-xs font-bold text-gray-500 dark:text-slate-400 truncate">No logo selected</p>
+                                </div>
+                            </div>
                         </div>
                         <div>
                             <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Category Brochure (PDF URL)</label>
@@ -291,6 +308,18 @@ include '../nav.php';
                             <option value="suspended">Suspended</option>
                         </select>
                     </div>
+                    <div>
+                        <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Password</label>
+                        <input type="password" name="password" id="editUserPassword" minlength="8" class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Set a new password">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Confirm Password</label>
+                        <input type="password" name="password_confirm" id="editUserPasswordConfirm" minlength="8" class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Repeat the new password">
+                    </div>
+                </div>
+
+                <div class="rounded-2xl border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-950/20 p-4 text-xs text-amber-900 dark:text-amber-100">
+                    Leave password fields blank when editing a user if you do not want to change their password.
                 </div>
 
                 <div>
@@ -404,6 +433,24 @@ $(document).ready(function() {
         return String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     }
 
+    function updateCategoryLogoPreview(value) {
+        const logoUrl = String(value || '').trim();
+        const preview = $('#editCatLogoPreview');
+        const placeholder = $('#editCatLogoPreviewPlaceholder');
+        const previewText = $('#editCatLogoPreviewText');
+
+        if (!logoUrl) {
+            preview.attr('src', '').addClass('hidden');
+            placeholder.removeClass('hidden');
+            previewText.text('No logo selected');
+            return;
+        }
+
+        preview.attr('src', logoUrl).removeClass('hidden');
+        placeholder.addClass('hidden');
+        previewText.text(logoUrl);
+    }
+
     console.log("Admin Panel Script Initialized");
 
     // --- User Functions ---
@@ -444,6 +491,7 @@ $(document).ready(function() {
                                     <span class="text-[10px] font-black uppercase tracking-widest ${statusColor}">${safeStatus}</span>
                                 </td>
                                 <td class="px-6 py-4 text-right flex items-center justify-end gap-3">
+                                    <a href="../profile.php?user_id=${u.id}" class="text-sky-600 dark:text-sky-400 font-black uppercase text-[10px] tracking-widest hover:underline transition-all">Profile</a>
                                     <button onclick="editUser(${u.id})" class="text-indigo-600 dark:text-indigo-400 font-black uppercase text-[10px] tracking-widest hover:underline transition-all">Edit</button>
                                     <button onclick="deleteUser(${u.id}, '${safeNameJs}')" class="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all active:scale-95">
                                         <i class="fas fa-trash-alt"></i>
@@ -513,6 +561,8 @@ $(document).ready(function() {
                     $('#editUserEmail').val(u.email);
                     $('#editUserMobile').val(u.mobile);
                     $('#editUserStatus').val(u.status);
+                    $('#editUserPassword').val('');
+                    $('#editUserPasswordConfirm').val('');
                     $('#editUserIsMember').prop('checked', !!u.is_member);
                     $('#editUserIsDriver').prop('checked', !!u.is_driver);
                     $('#editUserIsCalloutDriver').prop('checked', !!u.is_callout_driver);
@@ -533,6 +583,20 @@ $(document).ready(function() {
         const id = $('#editUserId').val();
         const method = id ? 'PATCH' : 'POST';
         const url = id ? `${window.laravelApiUrl}/api/users/${id}` : `${window.laravelApiUrl}/api/users/create`;
+        const password = $('#editUserPassword').val();
+        const passwordConfirm = $('#editUserPasswordConfirm').val();
+
+        if (password || passwordConfirm) {
+            if (password.length < 8) {
+                Swal.fire({ ...getSwalConfig(), icon: 'error', title: 'Password Too Short', text: 'Passwords must be at least 8 characters.' });
+                return;
+            }
+
+            if (password !== passwordConfirm) {
+                Swal.fire({ ...getSwalConfig(), icon: 'error', title: 'Passwords Do Not Match', text: 'Confirm the same password before saving.' });
+                return;
+            }
+        }
         
         const data = {
             name: $('#editUserName').val(),
@@ -545,6 +609,10 @@ $(document).ready(function() {
             is_office: $('#editUserIsOffice').is(':checked') ? 1 : 0,
             is_subcontractor: $('#editUserIsSubcontractor').is(':checked') ? 1 : 0
         };
+
+        if (password) {
+            data.password = password;
+        }
 
         const submitBtn = $(this).find('button[type="submit"]');
         submitBtn.prop('disabled', true).html('<i class="fas fa-circle-notch fa-spin"></i> Saving...');
@@ -582,12 +650,19 @@ $(document).ready(function() {
                     const safeCategoryName = escapeHtml(cat.category_name);
                     const safeEmail = escapeHtml(cat.email || 'No email configured');
                     const safeWebsite = escapeHtml(cat.website || '--');
+                    const safeLogoUrl = escapeHtml(cat.logo_url || '');
                     const safeCategoryNameJs = safeJsString(cat.category_name);
                     html += `
                         <tr class="table-row-hover">
                             <td class="px-6 py-4">
                                 <div class="font-bold text-gray-900 dark:text-gray-100">${safeCategoryName}</div>
                                 <div class="text-[10px] text-gray-400 font-medium">${safeEmail}</div>
+                            </td>
+                            <td class="px-6 py-4">
+                                ${cat.logo_url
+                                    ? `<img src="${safeLogoUrl}" alt="${safeCategoryName} logo" class="w-12 h-12 object-contain rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-1">`
+                                    : `<div class="w-12 h-12 rounded-xl border border-dashed border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-900 flex items-center justify-center text-gray-300 dark:text-slate-700"><i class="fas fa-image"></i></div>`
+                                }
                             </td>
                             <td class="px-6 py-4 text-gray-500 dark:text-gray-400 text-xs">${safeWebsite}</td>
                             <td class="px-6 py-4 text-center">
@@ -690,6 +765,7 @@ $(document).ready(function() {
         $('#editCatId').val('');
         $('#formAction').val('create_category');
         $('#modalTitle').text('Add New Category');
+        updateCategoryLogoPreview('');
         loadTemplates();
         $('#categoryModal').removeClass('hidden');
     }
@@ -709,6 +785,7 @@ $(document).ready(function() {
                     $('#editCatLogo').val(cat.logo_url);
                     $('#editCatBrochure').val(cat.brochure_url);
                     $('#editCatTemplate').val(cat.default_proposal_template_id);
+                    updateCategoryLogoPreview(cat.logo_url);
                     $('#categoryModal').removeClass('hidden');
                 }
             }).fail(function() {
@@ -716,6 +793,23 @@ $(document).ready(function() {
             });
         });
     }
+
+    $(document).on('input', '#editCatLogo', function() {
+        updateCategoryLogoPreview(this.value);
+    });
+
+    $(document).on('error', '#editCatLogoPreview', function() {
+        $(this).attr('src', '').addClass('hidden');
+        $('#editCatLogoPreviewPlaceholder').removeClass('hidden');
+        $('#editCatLogoPreviewText').text('Unable to load logo preview');
+    });
+
+    $(document).on('load', '#editCatLogoPreview', function() {
+        if ($(this).attr('src')) {
+            $(this).removeClass('hidden');
+            $('#editCatLogoPreviewPlaceholder').addClass('hidden');
+        }
+    });
 
     function loadTemplates() {
         return $.getJSON('../leads/leads_handler.php?action=get_templates', function(res) {
@@ -753,6 +847,9 @@ $(document).ready(function() {
                             if (!res.data.apis) {
                                 res.data.apis = [];
                             }
+                            if (!res.data.users) {
+                                res.data.users = [];
+                            }
 
                             const hasGmailLookbackSetting = res.data.apis.some(setting => setting.key === 'gmail_workorder_lookback_days');
                             if (!hasGmailLookbackSetting) {
@@ -763,6 +860,24 @@ $(document).ready(function() {
                                     description: 'Gmail Work Order Lookback Days'
                                 });
                             }
+
+                            const ensureSetting = (group, key, value, description) => {
+                                if (!res.data[group]) {
+                                    res.data[group] = [];
+                                }
+                                if (!res.data[group].some(setting => setting.key === key)) {
+                                    res.data[group].push({
+                                        key,
+                                        value,
+                                        group,
+                                        description
+                                    });
+                                }
+                            };
+
+                            ensureSetting('apis', 'booking_service_radius_km', '60', 'Booking Service Radius (km)');
+                            ensureSetting('apis', 'booking_recommended_max_marginal_cost', '10', 'Booking Recommended Max Marginal Cost');
+                            ensureSetting('apis', 'booking_near_base_max_distance_km', '20', 'Booking Near Base Max Distance (km)');
                             
                             const groups = Object.keys(res.data);
                             const userSettingsContainer = $('#userSettingsContainer');
@@ -892,13 +1007,19 @@ $(document).ready(function() {
                                         groupHtml += clientPickerHtml;
                                     }
                                     else {
-                                        const isNumberSetting = setting.key === 'gmail_workorder_lookback_days';
+                                        const numericSettings = new Set([
+                                            'gmail_workorder_lookback_days',
+                                            'booking_service_radius_km',
+                                            'booking_recommended_max_marginal_cost',
+                                            'booking_near_base_max_distance_km'
+                                        ]);
+                                        const isNumberSetting = numericSettings.has(setting.key);
                                         groupHtml += `
                                             <div>
                                                 <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">
                                                     ${escapeHtml(setting.description || setting.key)}
                                                 </label>
-                                                <input type="${isNumberSetting ? 'number' : 'text'}" name="${escapeHtml(setting.key)}" value="${escapeHtml(setting.value || '')}" ${isNumberSetting ? 'min="1" max="30" step="1"' : ''} class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                                                <input type="${isNumberSetting ? 'number' : 'text'}" name="${escapeHtml(setting.key)}" value="${escapeHtml(setting.value || '')}" ${isNumberSetting ? 'step="0.1"' : ''} class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
                                             </div>`;
                                     }
                                 });

@@ -7,7 +7,7 @@ if (!isTrackerAuthenticated()) {
     exit();
 }
 
-$superAdminEmail = $GLOBALS['super_admin_email'] ?? 'websites.dublin@gmail.com';
+$superAdminEmail = trackerSuperAdminEmail();
 if (($_SESSION['email'] ?? '') !== $superAdminEmail) {
     header('Location: ../index.php');
     exit();

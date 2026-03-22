@@ -56,6 +56,17 @@ include_once __DIR__ . '/../header.php';
 const userHash = <?php echo json_encode($hash, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
 const laravelApiUrl = '<?php echo $_ENV["LARAVEL_API_URL"]; ?>';
 
+function publicApiHeaders() {
+    const headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+    };
+    if (window.trackerTenantSlug) {
+        headers['X-Tenant-Slug'] = window.trackerTenantSlug;
+    }
+    return headers;
+}
+
 function escapeHtml(value) {
     return String(value ?? '')
         .replace(/&/g, '&amp;')
@@ -85,10 +96,7 @@ function loadTasks() {
 
     fetch(`${laravelApiUrl}/api/public/tasks`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        },
+        headers: publicApiHeaders(),
         body: JSON.stringify({ hash: userHash, search: '' })
     })
         .then(response => response.json())
@@ -182,7 +190,7 @@ function submitRemark() {
 
     fetch(`${laravelApiUrl}/api/public/tasks/${taskId}/remark`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        headers: publicApiHeaders(),
         body: JSON.stringify({ hash: userHash, remark: remark })
     })
     .then(res => res.json())
@@ -204,7 +212,7 @@ function markComplete(taskId) {
 
     fetch(`${laravelApiUrl}/api/public/tasks/${taskId}/complete`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        headers: publicApiHeaders(),
         body: JSON.stringify({ hash: userHash })
     })
     .then(res => res.json())

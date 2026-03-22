@@ -49,6 +49,7 @@
         window.appUrl = '<?php echo $appUrl ?? '/'; ?>';
         window.laravelApiUrl = '<?php echo $_ENV['LARAVEL_API_URL'] ?? ''; ?>';
         window.apiToken = '<?php echo htmlspecialchars(getTrackerApiToken() ?? '', ENT_QUOTES, 'UTF-8'); ?>';
+        window.trackerTenantSlug = '<?php echo htmlspecialchars(trackerTenantSlug(), ENT_QUOTES, 'UTF-8'); ?>';
         window.calloutDays = '<?php echo $GLOBALS['callout_days'] ?? '4,5'; ?>'.split(',').map(Number);
         // Theme initialization - immediate to prevent flash
         if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {

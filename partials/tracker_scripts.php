@@ -498,7 +498,12 @@
         }
 
         window.showJoinQR = function() {
-            const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' + encodeURIComponent('https://wa.me/19342459431?text=Start Job Tracker');
+            const joinNumber = <?php echo json_encode($GLOBALS['whatsapp_join_number'] ?? $_ENV['WHATSAPP_JOIN_NUMBER'] ?? ''); ?>;
+            if (!joinNumber) {
+                Swal.fire('Missing Setting', 'WhatsApp join number is not configured.', 'warning');
+                return;
+            }
+            const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' + encodeURIComponent(`https://wa.me/${joinNumber}?text=Start Job Tracker`);
             Swal.fire({ title: `<span class="heading-brand text-xl">📱 WhatsApp Sync</span>`, html: `<div class="flex flex-col items-center p-4"><div class="bg-white dark:bg-white/90 p-6 rounded-3xl mb-6 shadow-hard"><img src="${qrUrl}" class="w-48 h-48 rounded-lg"></div><p class="text-sm font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-2">Scan to Initialize</p><p class="text-xs text-gray-500 dark:text-gray-400 italic text-center leading-relaxed">Send the pre-filled message to receive your daily automated job assignments.</p></div>`, background: 'var(--card-bg)', color: 'var(--text-main)', showCloseButton: true, showConfirmButton: false, width: '400px', customClass: { popup: 'rounded-3xl border border-gray-100 dark:border-slate-800 shadow-2xl' } });
         }
 

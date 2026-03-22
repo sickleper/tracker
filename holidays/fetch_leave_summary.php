@@ -16,8 +16,7 @@ if (!isTrackerAuthenticated()) {
 $year = isset($_GET['year']) ? (int)$_GET['year'] : date('Y');
 $requestedUserId = isset($_GET['user_id']) ? (int) $_GET['user_id'] : null;
 $sessionUserId = (int) ($_SESSION['user_id'] ?? 0);
-$superAdminEmail = $GLOBALS['super_admin_email'] ?? 'websites.dublin@gmail.com';
-$isAdmin = (($_SESSION['email'] ?? '') === $superAdminEmail);
+$isAdmin = isTrackerAdminUser();
 
 try {
     $params = ['year' => $year];

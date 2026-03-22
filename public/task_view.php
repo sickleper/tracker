@@ -112,6 +112,23 @@ const laravelApiUrl = '<?php echo $_ENV["LARAVEL_API_URL"]; ?>';
 let currentTaskId = null;
 let currentPO = '';
 
+function publicApiHeaders() {
+    const headers = {
+        'Accept': 'application/json'
+    };
+    if (window.trackerTenantSlug) {
+        headers['X-Tenant-Slug'] = window.trackerTenantSlug;
+    }
+    return headers;
+}
+
+function publicJsonHeaders() {
+    return {
+        ...publicApiHeaders(),
+        'Content-Type': 'application/json'
+    };
+}
+
 function escapeHtml(value) {
     return String(value ?? '')
         .replace(/&/g, '&amp;')
@@ -126,7 +143,9 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function loadTaskDetails() {
-    fetch(`${laravelApiUrl}/api/public/task/${taskHash}`)
+    fetch(`${laravelApiUrl}/api/public/task/${taskHash}`, {
+        headers: publicApiHeaders()
+    })
         .then(r => r.json())
         .then(data => {
             document.getElementById('loader').classList.add('hidden');
@@ -278,7 +297,7 @@ function submitRemark() {
 
     fetch(`${laravelApiUrl}/api/public/tasks/${currentTaskId}/remark`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        headers: publicJsonHeaders(),
         body: JSON.stringify({ hash: taskHash, remark: remark, is_task_hash: true })
     })
     .then(r => r.json())
@@ -301,7 +320,7 @@ function markTaskComplete() {
 
     fetch(`${laravelApiUrl}/api/public/tasks/${currentTaskId}/complete`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        headers: publicJsonHeaders(),
         body: JSON.stringify({ hash: taskHash, is_task_hash: true })
     })
     .then(r => r.json())

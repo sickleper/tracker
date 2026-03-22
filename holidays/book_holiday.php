@@ -10,9 +10,10 @@ if (!isTrackerAuthenticated()) {
 $pageTitle = "Holiday & Leave Management";
 include "../header.php";
 
-$superAdminEmail = $GLOBALS['super_admin_email'] ?? 'websites.dublin@gmail.com';
-$isAdmin = (($_SESSION['email'] ?? '') === $superAdminEmail);
+$isAdmin = isTrackerAdminUser();
 $user_id = (int) ($_SESSION['user_id'] ?? 0);
+$role_id = (int) ($_SESSION['role_id'] ?? 0);
+$isOffice = !empty($_SESSION['is_office']);
 
 // Fetch users via API (team only)
 $users = [];
@@ -20,6 +21,7 @@ $usersRes = makeApiCall('/api/users', ['team_only' => 1]);
 if ($usersRes && ($usersRes['success'] ?? false)) {
     $users = $usersRes['users'] ?? [];
 }
+$canBookForOthers = count($users) > 1;
 
 if ($user_id <= 0 && !empty($_SESSION['email'])) {
     foreach ($users as $user) {
@@ -88,6 +90,7 @@ $summaryData = ($summaryRes && ($summaryRes['success'] ?? false)) ? $summaryRes[
     .summary-scroll { max-height: 320px; overflow-y: auto; }
 </style>
 
+<!-- Admin Debug: Email: <?php echo $_SESSION['email'] ?? 'N/A'; ?>, SuperAdmin: <?php echo $superAdminEmail; ?>, Role: <?php echo $role_id ?? 'N/A'; ?>, Office: <?php echo $isOffice ? 'Yes' : 'No'; ?>, isAdmin: <?php echo $isAdmin ? 'Yes' : 'No'; ?>, CanBookForOthers: <?php echo $canBookForOthers ? 'Yes' : 'No'; ?> -->
 <body class="bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-gray-100 font-sans">
 <?php include "../nav.php"; ?>
 
@@ -169,7 +172,7 @@ $summaryData = ($summaryRes && ($summaryRes['success'] ?? false)) ? $summaryRes[
                     
                     <form id="book-leave-form" class="p-8 space-y-6">
                         <!-- User Selection (Visible for Admin) -->
-                        <div id="user-selection-container" class="<?php echo $isAdmin ? '' : 'hidden'; ?>">
+                        <div id="user-selection-container" class="<?php echo $canBookForOthers ? '' : 'hidden'; ?>">
                             <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Book for Member</label>
                             <select name="user_id" class="w-full p-4 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-bold dark:text-white">
                                 <option value="<?php echo $user_id; ?>">Myself (<?php echo htmlspecialchars($currentUserName); ?>)</option>
@@ -294,6 +297,22 @@ $summaryData = ($summaryRes && ($summaryRes['success'] ?? false)) ? $summaryRes[
     </div>
 </div>
 
+<!-- Modal for Viewing Details -->
+<div class="fixed inset-0 bg-black/60 backdrop-blur-md z-[9999] flex items-center justify-center p-4 hidden" id="viewDetailsModal">
+    <div class="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-gray-100 dark:border-slate-800">
+        <div class="section-header bg-indigo-600">
+            <h3>📖 Leave Details</h3>
+            <button onclick="closeModal('viewDetailsModal')" class="w-8 h-8 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full transition-all text-white">&times;</button>
+        </div>
+        <div class="p-8">
+            <div id="viewDetailsContent"></div>
+            <div class="mt-8">
+                <button onclick="closeModal('viewDetailsModal')" class="w-full py-4 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-300 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-gray-200 dark:hover:bg-slate-700 transition-all active:scale-95">Close Window</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Scripts -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
@@ -304,6 +323,8 @@ $summaryData = ($summaryRes && ($summaryRes['success'] ?? false)) ? $summaryRes[
 <script>
     const currentUserId = <?php echo $user_id; ?>;
     const isHolidayAdmin = <?php echo $isAdmin ? 'true' : 'false'; ?>;
+    const canBookForOthers = <?php echo $canBookForOthers ? 'true' : 'false'; ?>;
+    const canApproveLeaves = canBookForOthers || isHolidayAdmin;
     const publicHolidays = <?php echo json_encode($holidays); ?>;
     let selectedLeaveId = null;
 
@@ -367,7 +388,7 @@ $summaryData = ($summaryRes && ($summaryRes['success'] ?? false)) ? $summaryRes[
                 return;
             }
 
-            if (!isHolidayAdmin && selectedUserId !== currentUserId) {
+            if (!canBookForOthers && selectedUserId !== currentUserId) {
                 Swal.fire({ icon: 'error', title: 'Not Allowed', text: 'You can only book leave for yourself.', theme: getSwalTheme() });
                 return;
             }
@@ -423,7 +444,7 @@ $summaryData = ($summaryRes && ($summaryRes['success'] ?? false)) ? $summaryRes[
                      }
                 });
             },
-            eventClick: function(event) { if (isHolidayAdmin && event.user_id) showApproveModal(event); }
+            eventClick: function(event) { if (canApproveLeaves && event.user_id) showApproveModal(event); }
         });
     }
 
@@ -480,14 +501,14 @@ $summaryData = ($summaryRes && ($summaryRes['success'] ?? false)) ? $summaryRes[
     }
 
     function fetchMyLeaves() {
-        $.getJSON('fetch_my_leaves.php', { user_id: isHolidayAdmin ? 'all' : currentUserId, year: 'all' }, function(res) {
+        $.getJSON('fetch_my_leaves.php', { user_id: canApproveLeaves ? 'all' : currentUserId, year: 'all' }, function(res) {
             if (res.success || res.status === 'success') {
                 let html = '';
                 res.data.forEach(l => {
                     const statusClass = 'status-' + l.status;
                     let dateDisplay = moment(l.start_date).format('DD MMM YYYY');
                     if (l.start_date !== l.end_date) dateDisplay = moment(l.start_date).format('DD MMM') + ' - ' + moment(l.end_date).format('DD MMM YYYY');
-                    const canDelete = isHolidayAdmin || (l.user_id === currentUserId && l.status === 'pending');
+                    const canDelete = canApproveLeaves || (l.user_id === currentUserId && l.status === 'pending');
                     html += `
                         <tr class="hover:bg-gray-50 dark:hover:bg-indigo-900/10 transition-colors">
                             <td class="px-8 py-4"><span class="${statusClass}">${l.status}</span></td>
@@ -495,8 +516,11 @@ $summaryData = ($summaryRes && ($summaryRes['success'] ?? false)) ? $summaryRes[
                             <td class="px-8 py-4 font-bold text-gray-600 dark:text-gray-400">${dateDisplay}</td>
                             <td class="px-8 py-4 text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase">${l.type_name} <span class="text-gray-400 font-medium lowercase italic ml-1">(${l.duration})</span></td>
                             <td class="px-8 py-4 text-right flex items-center justify-end gap-2">
-                                ${isHolidayAdmin && l.status === 'pending' ? `<button onclick="showApproveModalFromTable(${JSON.stringify(l).replace(/"/g, '&quot;')})" class="p-2 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-xl transition-all shadow-sm"><i class="fas fa-check-circle"></i></button>` : ''}
-                                ${canDelete ? `<button onclick="deleteLeave(${l.id})" class="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all"><i class="fas fa-trash-alt"></i></button>` : ''}
+                                <button onclick="viewLeaveDetails(${JSON.stringify(l).replace(/"/g, '&quot;')})" class="p-2 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all shadow-sm" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                ${canApproveLeaves && l.status === 'pending' ? `<button onclick="showApproveModalFromTable(${JSON.stringify(l).replace(/"/g, '&quot;')})" class="p-2 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-xl transition-all shadow-sm" title="Approve/Reject"><i class="fas fa-check-circle"></i></button>` : ''}
+                                ${canDelete ? `<button onclick="deleteLeave(${l.id})" class="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all" title="Delete Request"><i class="fas fa-trash-alt"></i></button>` : ''}
                             </td>
                         </tr>`;
                 });
@@ -544,6 +568,61 @@ $summaryData = ($summaryRes && ($summaryRes['success'] ?? false)) ? $summaryRes[
     }
 
     function closeModal(id) { $('#' + id).addClass('hidden'); }
+
+    function viewLeaveDetails(l) {
+        let dateDisplay = moment(l.start_date).format('DD MMM YYYY');
+        if (l.start_date !== l.end_date) dateDisplay = moment(l.start_date).format('DD MMM') + ' - ' + moment(l.end_date).format('DD MMM YYYY');
+        
+        const statusColors = {
+            'pending': 'text-amber-500 bg-amber-50 dark:bg-amber-950/20',
+            'approved': 'text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20',
+            'rejected': 'text-red-500 bg-red-50 dark:bg-red-950/20'
+        };
+        const statusColorClass = statusColors[l.status] || 'text-gray-500 bg-gray-50';
+
+        let html = `
+            <div class="space-y-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-[9px] text-gray-400 font-black uppercase tracking-widest mb-1">Team Member</p>
+                        <p class="text-xl font-black text-gray-900 dark:text-white italic">${l.user_name}</p>
+                    </div>
+                    <div class="px-4 py-2 rounded-xl border border-current/20 ${statusColorClass} text-[10px] font-black uppercase tracking-widest">
+                        ${l.status}
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-6 pt-6 border-t border-gray-100 dark:border-slate-800">
+                    <div>
+                        <p class="text-[9px] text-gray-400 font-black uppercase tracking-widest mb-1">Date Range</p>
+                        <p class="text-sm font-bold text-gray-700 dark:text-gray-300">${dateDisplay}</p>
+                    </div>
+                    <div>
+                        <p class="text-[9px] text-gray-400 font-black uppercase tracking-widest mb-1">Duration</p>
+                        <p class="text-sm font-bold text-gray-700 dark:text-gray-300">${l.days_count} day(s) (${l.duration})</p>
+                    </div>
+                </div>
+
+                <div class="pt-6 border-t border-gray-100 dark:border-slate-800">
+                    <p class="text-[9px] text-gray-400 font-black uppercase tracking-widest mb-1">Leave Category</p>
+                    <p class="text-sm font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">${l.type_name}</p>
+                </div>
+
+                <div class="p-4 bg-gray-50 dark:bg-slate-950 rounded-2xl border border-gray-100 dark:border-slate-800">
+                    <p class="text-[9px] text-gray-400 font-black uppercase tracking-widest mb-2">Employee Note</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed italic">"${l.reason || 'No reason provided.'}"</p>
+                </div>
+
+                ${l.admin_note ? `
+                <div class="p-4 bg-indigo-50 dark:bg-indigo-950/20 rounded-2xl border border-indigo-100 dark:border-indigo-900/50">
+                    <p class="text-[9px] text-indigo-400 font-black uppercase tracking-widest mb-2">Admin Resolution Note</p>
+                    <p class="text-sm text-indigo-900 dark:text-indigo-200 leading-relaxed font-medium">"${l.admin_note}"</p>
+                </div>` : ''}
+            </div>
+        `;
+        $('#viewDetailsContent').html(html);
+        $('#viewDetailsModal').removeClass('hidden');
+    }
 
     function editQuota(userId, typeId, userName, typeName, current) {
         Swal.fire({ title: 'Update Entitlement', text: `Set ${typeName} days for ${userName}`, input: 'number', inputValue: current, showCancelButton: true, confirmButtonText: 'Update', showLoaderOnConfirm: true, theme: getSwalTheme(), preConfirm: (newVal) => { return $.post('update_quota.php', { user_id: userId, leave_type_id: typeId, no_of_leaves: newVal }).then(res => { if (res.status !== 'success') throw new Error(res.message); return res; }); }, allowOutsideClick: () => !Swal.isLoading() }).then((result) => { if (result.isConfirmed) { Swal.fire({ icon: 'success', title: 'Updated!', text: 'Entitlement updated.', timer: 1500, showConfirmButton: false, theme: getSwalTheme() }); fetchSummary(); } }).catch(err => Swal.fire({ icon: 'error', title: 'Error!', text: err.message, theme: getSwalTheme() }));

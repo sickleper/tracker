@@ -40,6 +40,11 @@ if (!function_exists('makeApiCall')) {
             'Accept: application/json'
         ];
 
+        $tenantSlug = function_exists('trackerTenantSlug') ? trackerTenantSlug() : trim((string) ($_SERVER['TENANT_SLUG'] ?? $_ENV['TENANT_SLUG'] ?? ''));
+        if ($tenantSlug !== '') {
+            $headers[] = 'X-Tenant-Slug: ' . $tenantSlug;
+        }
+
         if ($api_token) {
             $headers[] = 'Authorization: Bearer ' . $api_token;
         }
@@ -131,5 +136,67 @@ if (!function_exists('loadGlobalSettings')) {
             }
             $GLOBALS['settings_loaded'] = true;
         }
+    }
+}
+
+if (!function_exists('isTrackerSuperAdmin')) {
+    function isTrackerSuperAdmin() {
+        if (session_status() === PHP_SESSION_NONE) {
+            if (defined('SESSION_SAVE_PATH')) {
+                ini_set('session.save_path', SESSION_SAVE_PATH);
+            }
+            session_start();
+        }
+
+        // 1. Check SuperAdmin Email Match
+        $superAdminEmail = trackerSuperAdminEmail();
+        if ($superAdminEmail !== '' && ($_SESSION['email'] ?? '') === $superAdminEmail) {
+            return true;
+        }
+
+        // 2. Check Role ID (1 is usually Admin/SuperAdmin)
+        if (isset($_SESSION['role_id']) && (int)$_SESSION['role_id'] === 1) {
+            return true;
+        }
+
+        return false;
+    }
+}
+
+if (!function_exists('isTrackerAdminUser')) {
+    function isTrackerAdminUser() {
+        if (session_status() === PHP_SESSION_NONE) {
+            if (defined('SESSION_SAVE_PATH')) {
+                ini_set('session.save_path', SESSION_SAVE_PATH);
+            }
+            session_start();
+        }
+
+        $superAdminEmail = trackerSuperAdminEmail();
+        if ($superAdminEmail !== '' && ($_SESSION['email'] ?? '') === $superAdminEmail) {
+            return true;
+        }
+
+        if (isset($_SESSION['role_id']) && (int) $_SESSION['role_id'] === 1) {
+            return true;
+        }
+
+        if (!empty($_SESSION['is_office'])) {
+            return true;
+        }
+
+        $currentUserRes = makeApiCall('/api/user');
+        if (is_array($currentUserRes)) {
+            $roleId = (int) ($currentUserRes['data']['role_id'] ?? $currentUserRes['role_id'] ?? 0);
+            $isOffice = (bool) ($currentUserRes['data']['is_office'] ?? $currentUserRes['is_office'] ?? false);
+            if ($roleId > 0) {
+                $_SESSION['role_id'] = $roleId;
+            }
+            $_SESSION['is_office'] = $isOffice;
+
+            return $roleId === 1 || $isOffice;
+        }
+
+        return false;
     }
 }

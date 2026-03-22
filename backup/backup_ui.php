@@ -9,8 +9,8 @@ if (!isTrackerAuthenticated()) {
 
 require_once "../tracker_data.php";
 
-// SECURITY: Only allow websites.dublin@gmail.com to access this page (DB priority)
-$superAdminEmail = $GLOBALS['super_admin_email'] ?? 'websites.dublin@gmail.com';
+// SECURITY: Only allow the configured super admin to access this page
+$superAdminEmail = trackerSuperAdminEmail();
 if (($_SESSION['email'] ?? '') !== $superAdminEmail) {
     header('Location: ../index.php');
     exit();

@@ -265,7 +265,7 @@ ksort($groupedLeads);
                                 <strong id="preview-company-name" style="color: #333;"></strong><br>
                                 <span id="preview-contact-info"></span>
                             </p>
-                            <img src="https://app.energyretrofitireland.ie/img/efi-certs-header.webp" style="max-width: 100%; margin-top: 10px; opacity: 0.7;">
+                            <img src="<?= htmlspecialchars(trackerAppUrl() !== '' ? trackerAppUrl() . '/img/efi-certs-header.webp' : '/img/efi-certs-header.webp') ?>" style="max-width: 100%; margin-top: 10px; opacity: 0.7;">
                         </div>
                     </div>
                 </div>
