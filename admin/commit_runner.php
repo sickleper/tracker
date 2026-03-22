@@ -61,6 +61,22 @@ $output = [];
 $exitCode = 1;
 exec($fullCommand, $output, $exitCode);
 
+// Logging
+$logDir = $repoDir . '/storage/deploy_logs';
+if (is_dir($logDir) || mkdir($logDir, 0775, true)) {
+    $timestamp = date('Ymd-His');
+    $logPath = $logDir . '/deploy-' . $timestamp . '.log';
+    $header = [
+        'Action: Save (Commit)',
+        'Time: ' . date('Y-m-d H:i:s'),
+        'Requested By: ' . ($_SESSION['email'] ?? 'unknown'),
+        'Message: ' . $message,
+        'Exit Code: ' . $exitCode,
+        str_repeat('-', 60),
+    ];
+    file_put_contents($logPath, implode(PHP_EOL, array_merge($header, $output)) . PHP_EOL);
+}
+
 echo json_encode([
     'success' => $exitCode === 0,
     'message' => $exitCode === 0 ? 'Changes committed successfully.' : 'Failed to commit changes.',
