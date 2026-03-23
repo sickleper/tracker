@@ -7,6 +7,111 @@ require_once __DIR__ . '/../vendor/autoload.php';
 $dotenv = \Dotenv\Dotenv::createImmutable(__DIR__ . '/../'); // Path to workorders project root
 $dotenv->load();
 
+if (!defined('TRACKER_BOOTSTRAP_CONFIG_PATH')) {
+    define('TRACKER_BOOTSTRAP_CONFIG_PATH', __DIR__ . '/storage/app_bootstrap.json');
+}
+
+if (!function_exists('trackerDefaultBootstrapConfig')) {
+    function trackerDefaultBootstrapConfig(): array
+    {
+        return [
+            'app_name' => '',
+            'app_url' => '',
+            'laravel_api_url' => '',
+            'default_tenant' => '',
+            'updated_at' => '',
+            'updated_by' => '',
+        ];
+    }
+}
+
+if (!function_exists('trackerNormalizeBootstrapConfig')) {
+    function trackerNormalizeBootstrapConfig(array $config): array
+    {
+        $normalized = trackerDefaultBootstrapConfig();
+
+        $normalized['app_name'] = trim((string) ($config['app_name'] ?? ''));
+        $normalized['app_url'] = rtrim(trim((string) ($config['app_url'] ?? '')), '/');
+        $normalized['laravel_api_url'] = rtrim(trim((string) ($config['laravel_api_url'] ?? '')), '/');
+        $normalized['default_tenant'] = trim((string) ($config['default_tenant'] ?? $config['default_tenant_slug'] ?? ''));
+        $normalized['updated_at'] = trim((string) ($config['updated_at'] ?? ''));
+        $normalized['updated_by'] = trim((string) ($config['updated_by'] ?? ''));
+
+        return $normalized;
+    }
+}
+
+if (!function_exists('trackerLoadBootstrapConfig')) {
+    function trackerLoadBootstrapConfig(bool $forceReload = false): array
+    {
+        static $cached = null;
+
+        if (!$forceReload && is_array($cached)) {
+            return $cached;
+        }
+
+        $config = trackerDefaultBootstrapConfig();
+        $path = TRACKER_BOOTSTRAP_CONFIG_PATH;
+
+        if (is_file($path) && is_readable($path)) {
+            $raw = file_get_contents($path);
+            $decoded = json_decode($raw ?: '', true);
+            if (is_array($decoded)) {
+                $config = trackerNormalizeBootstrapConfig($decoded);
+            }
+        }
+
+        $cached = $config;
+        return $cached;
+    }
+}
+
+if (!function_exists('trackerSaveBootstrapConfig')) {
+    function trackerSaveBootstrapConfig(array $config, ?string $updatedBy = null): array
+    {
+        $normalized = trackerNormalizeBootstrapConfig($config);
+        $normalized['updated_at'] = gmdate('c');
+        $normalized['updated_by'] = trim((string) ($updatedBy ?? ''));
+
+        $dir = dirname(TRACKER_BOOTSTRAP_CONFIG_PATH);
+        if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
+            throw new RuntimeException('Unable to create tracker bootstrap config directory.');
+        }
+
+        $json = json_encode($normalized, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        if (!is_string($json)) {
+            throw new RuntimeException('Unable to encode tracker bootstrap config.');
+        }
+
+        $result = file_put_contents(TRACKER_BOOTSTRAP_CONFIG_PATH, $json . PHP_EOL, LOCK_EX);
+        if ($result === false) {
+            throw new RuntimeException('Unable to write tracker bootstrap config.');
+        }
+
+        return trackerLoadBootstrapConfig(true);
+    }
+}
+
+$trackerBootstrapConfig = trackerLoadBootstrapConfig();
+$trackerBootstrapMap = [
+    'APP_URL' => 'app_url',
+    'LARAVEL_API_URL' => 'laravel_api_url',
+    'TENANT_SLUG' => 'default_tenant',
+];
+
+foreach ($trackerBootstrapMap as $envKey => $configKey) {
+    $value = trim((string) ($trackerBootstrapConfig[$configKey] ?? ''));
+    if ($value === '') {
+        continue;
+    }
+
+    $_ENV[$envKey] = $value;
+    $_SERVER[$envKey] = $value;
+    putenv($envKey . '=' . $value);
+}
+
+$GLOBALS['tracker_bootstrap_config'] = $trackerBootstrapConfig;
+
 // Global Session Configuration
 define('SESSION_SAVE_PATH', '/home/workorders/tmp');
 if (session_status() === PHP_SESSION_NONE) {
@@ -58,9 +163,96 @@ if (!function_exists('trackerSuperAdminEmail')) {
 }
 
 if (!function_exists('trackerTenantSlug')) {
-    function trackerTenantSlug(): string
+    function trackerResolveTenantSlugFromApi(int $tenantId, ?string $apiToken): string
     {
-        return trim((string) ($_SERVER['TENANT_SLUG'] ?? $_ENV['TENANT_SLUG'] ?? ''));
+        if ($tenantId <= 0 || !is_string($apiToken) || $apiToken === '') {
+            return '';
+        }
+
+        $baseUrl = trim((string) ($_ENV['LARAVEL_API_URL'] ?? getenv('LARAVEL_API_URL') ?? ''));
+        if ($baseUrl === '') {
+            return '';
+        }
+
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => rtrim($baseUrl, '/') . '/api/tenants/' . $tenantId,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => [
+                'Accept: application/json',
+                'Authorization: Bearer ' . $apiToken,
+            ],
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => false,
+            CURLOPT_TIMEOUT => 10,
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($response === false || $httpCode >= 400) {
+            return '';
+        }
+
+        $decoded = json_decode($response, true);
+        $slug = trim((string) ($decoded['data']['slug'] ?? $decoded['slug'] ?? ''));
+
+        return $slug;
+    }
+
+    function trackerTenantSlug(bool $refresh = false): string
+    {
+        static $resolved = null;
+
+        if ($refresh) {
+            $resolved = null;
+        }
+
+        $impersonatedSlug = trim((string) ($_SESSION['impersonated_tenant_slug'] ?? ''));
+        if ($impersonatedSlug !== '') {
+            if ($resolved === null || $resolved !== $impersonatedSlug) {
+                $_SESSION['tenant_slug'] = $impersonatedSlug;
+                $resolved = $impersonatedSlug;
+            }
+            return $resolved;
+        }
+
+        if ($resolved !== null) {
+            return $resolved;
+        }
+
+        $candidates = [
+            $_SERVER['HTTP_X_TENANT_SLUG'] ?? null,
+            $_GET['tenant_slug'] ?? null,
+            $_POST['tenant_slug'] ?? null,
+            $_SESSION['tenant_slug'] ?? null,
+            $_COOKIE['tenant_slug'] ?? null,
+            $_SERVER['TENANT_SLUG'] ?? null,
+            $_ENV['TENANT_SLUG'] ?? null,
+        ];
+
+        foreach ($candidates as $candidate) {
+            $candidate = trim((string) $candidate);
+            if ($candidate !== '') {
+                $_SESSION['tenant_slug'] = $candidate;
+                $resolved = $candidate;
+                return $resolved;
+            }
+        }
+
+        $tenantId = (int) ($_SESSION['tenant_id'] ?? 0);
+        $apiToken = getTrackerApiToken();
+        $slug = trackerResolveTenantSlugFromApi($tenantId, $apiToken);
+
+        if ($slug !== '') {
+            $_SESSION['tenant_slug'] = $slug;
+            $resolved = $slug;
+            return $resolved;
+        }
+
+        $resolved = '';
+        return $resolved;
     }
 }
 
@@ -78,6 +270,14 @@ if (!function_exists('gs')) {
             return $_ENV[$upper];
         }
         return $default;
+    }
+}
+
+if (!function_exists('featureEnabled')) {
+    function featureEnabled(string $key, bool $default = false): bool
+    {
+        $value = gs($key, $default ? '1' : '0');
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
     }
 }
 
@@ -117,6 +317,7 @@ $googleMapsApiKey = $_SERVER['GOOGLE_MAPS_API_KEY'] ?? $_ENV['GOOGLE_MAPS_API_KE
 // Project API
 $projectApiBaseUrl = $_SERVER['PROJECT_API_BASE_URL'] ?? $_ENV['PROJECT_API_BASE_URL'] ?? '';
 $laravelApiUrl = $_SERVER['LARAVEL_API_URL'] ?? $_ENV['LARAVEL_API_URL'] ?? '';
+$appUrl = trackerAppUrl();
 
 // Load Global Settings from Database via API
 require_once __DIR__ . '/api_helper.php';

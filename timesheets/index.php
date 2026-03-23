@@ -1,14 +1,21 @@
 <?php
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../tracker_data.php';
 
 if (!isTrackerAuthenticated()) {
     header("Location: ../oauth2callback.php");
     exit();
 }
 
+// FEATURE GATE: Redirect if module is disabled
+if (!featureEnabled('module_timesheets_enabled')) {
+    header('Location: ../index.php?error=feature_disabled');
+    exit();
+}
+
 $pageTitle = "Monthly Timesheet Report";
 include "../header.php";
-require_once __DIR__ . '/../tracker_data.php';
+include "../nav.php";
 
 $user_id = $_SESSION['user_id'] ?? null;
 if (!$user_id) {
@@ -59,7 +66,6 @@ if ($attendancesRes && ($attendancesRes['success'] ?? false)) {
 </style>
 
 <div class="bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-gray-100 font-sans min-h-screen pb-12 transition-colors duration-300">
-    <?php include "../nav.php"; ?>
 
     <div class="max-w-full mx-auto px-4 md:px-8 py-8 mt-4">
         <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 no-print">

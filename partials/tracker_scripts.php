@@ -497,14 +497,93 @@
             xeroInvoiceFlow({ previewUrl: window.appUrl + '../xero/generate_bulk_invoice.php', previewBody: previewBody, createUrl: window.appUrl + '../xero/generate_bulk_invoice.php', getCreateBody: (customRef) => { const body = new URLSearchParams(); ids.forEach(id => body.append('ids[]', id)); body.append('custom_reference', customRef); return body; }, title: `<span class="heading-brand text-xl">📦 Bulk Group Invoice</span>`, isBulk: true });
         }
 
-        window.showJoinQR = function() {
-            const joinNumber = <?php echo json_encode($GLOBALS['whatsapp_join_number'] ?? $_ENV['WHATSAPP_JOIN_NUMBER'] ?? ''); ?>;
+        async function resolveWhatsAppJoinNumber() {
+            const fallbackNumber = <?php echo json_encode($GLOBALS['whatsapp_join_number'] ?? $_ENV['WHATSAPP_JOIN_NUMBER'] ?? ''); ?>;
+
+            if (!window.laravelApiUrl || !window.apiToken) {
+                return fallbackNumber;
+            }
+
+            try {
+                const response = await fetch(`${window.laravelApiUrl}/api/settings`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${window.apiToken}`
+                    }
+                });
+
+                const payload = await response.json();
+                if (!response.ok || !payload || payload.success !== true || !payload.data || typeof payload.data !== 'object') {
+                    return fallbackNumber;
+                }
+
+                for (const groupItems of Object.values(payload.data)) {
+                    if (!Array.isArray(groupItems)) continue;
+                    const match = groupItems.find(item => item && item.key === 'whatsapp_join_number');
+                    if (match && typeof match.value === 'string' && match.value.trim() !== '') {
+                        return match.value;
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to resolve tenant WhatsApp join number.', error);
+            }
+
+            return fallbackNumber;
+        }
+
+        window.showJoinQR = async function() {
+            const rawJoinNumber = await resolveWhatsAppJoinNumber();
+            const joinNumber = String(rawJoinNumber || '').replace(/[^\d+]/g, '');
+            const waNumber = joinNumber.replace(/^\+/, '');
+
             if (!joinNumber) {
                 Swal.fire('Missing Setting', 'WhatsApp join number is not configured.', 'warning');
                 return;
             }
-            const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' + encodeURIComponent(`https://wa.me/${joinNumber}?text=Start Job Tracker`);
-            Swal.fire({ title: `<span class="heading-brand text-xl">📱 WhatsApp Sync</span>`, html: `<div class="flex flex-col items-center p-4"><div class="bg-white dark:bg-white/90 p-6 rounded-3xl mb-6 shadow-hard"><img src="${qrUrl}" class="w-48 h-48 rounded-lg"></div><p class="text-sm font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-2">Scan to Initialize</p><p class="text-xs text-gray-500 dark:text-gray-400 italic text-center leading-relaxed">Send the pre-filled message to receive your daily automated job assignments.</p></div>`, background: 'var(--card-bg)', color: 'var(--text-main)', showCloseButton: true, showConfirmButton: false, width: '400px', customClass: { popup: 'rounded-3xl border border-gray-100 dark:border-slate-800 shadow-2xl' } });
+            if (!/^\d{7,15}$/.test(waNumber)) {
+                Swal.fire('Invalid Setting', 'WhatsApp join number is not in a valid format. Use an international number with country code.', 'warning');
+                return;
+            }
+
+            const joinUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent('Start Job Tracker')}`;
+            const displayNumber = joinNumber.startsWith('+') ? joinNumber : `+${waNumber}`;
+
+            Swal.fire({
+                title: `<span class="heading-brand text-xl">📱 WhatsApp Sync</span>`,
+                html: `
+                    <div class="flex flex-col items-center p-4">
+                        <div class="bg-white dark:bg-white/90 p-6 rounded-3xl mb-6 shadow-hard">
+                            <div id="whatsapp-join-qr" class="w-48 h-48 flex items-center justify-center"></div>
+                        </div>
+                        <p class="text-sm font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-2">Scan to Initialize</p>
+                        <p class="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Configured Number</p>
+                        <p class="text-sm font-mono font-bold text-gray-900 dark:text-white mb-4">${displayNumber}</p>
+                        <a href="${joinUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center px-4 py-2 rounded-2xl bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all mb-4">Open WhatsApp Link</a>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 italic text-center leading-relaxed">Send the pre-filled message to receive your daily automated job assignments.</p>
+                    </div>
+                `,
+                background: 'var(--card-bg)',
+                color: 'var(--text-main)',
+                showCloseButton: true,
+                showConfirmButton: false,
+                width: '400px',
+                customClass: { popup: 'rounded-3xl border border-gray-100 dark:border-slate-800 shadow-2xl' },
+                didOpen: () => {
+                    const qrContainer = document.getElementById('whatsapp-join-qr');
+                    if (qrContainer && typeof QRCode !== 'undefined') {
+                        qrContainer.innerHTML = '';
+                        new QRCode(qrContainer, {
+                            text: joinUrl,
+                            width: 192,
+                            height: 192,
+                            colorDark: '#111827',
+                            colorLight: '#ffffff',
+                            correctLevel: QRCode.CorrectLevel.M
+                        });
+                    }
+                }
+            });
         }
 
         function sendJobWhatsApp(id) {

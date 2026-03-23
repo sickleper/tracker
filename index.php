@@ -11,6 +11,7 @@ if (!isTrackerAuthenticated()) {
 require_once 'tracker_data.php';
 
 $viewMode = (isset($_GET['view']) && $_GET['view'] === 'mobile') || (isset($_COOKIE['view_mode']) && $_COOKIE['view_mode'] === 'mobile') ? 'mobile' : 'desktop';
+$xeroConnected = isset($xeroConnected) ? (bool) $xeroConnected : false;
 
 include 'header.php';
 include 'nav.php';
@@ -41,7 +42,7 @@ include 'nav.php';
             </div>
             <div class="h-8 w-px bg-gray-200 dark:bg-slate-800 hidden md:block"></div>
             <div class="flex flex-wrap gap-2 flex-grow md:flex-grow-0">
-                <?php if (trackerSuperAdminEmail() !== '' && ($_SESSION['email'] ?? '') === trackerSuperAdminEmail()): ?>
+                <?php if (isTrackerSuperAdmin()): ?>
                     <a href="gmail_orders.php" class="btn-secondary dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/50 py-2 px-4 shadow-none text-sm flex-1 md:flex-none" title="Gmail Work Orders"><i class="fab fa-google"></i> <span class="hidden lg:inline">Gmail</span></a>
                 <?php endif; ?>
                 <button onclick="toggleStats()" class="btn-primary py-2 px-4 shadow-none text-sm flex-1 md:flex-none" title="Toggle Stats"><i class="fas fa-chart-pie"></i> <span class="hidden lg:inline">Stats</span></button>
@@ -138,11 +139,69 @@ include 'nav.php';
     ?>
 
 </div>
+<!-- New Order Modal -->
+<div id="newOrderModal" class="fixed inset-0 z-[100] hidden overflow-y-auto bg-black/60 backdrop-blur-md">
+    <div class="flex min-h-screen items-stretch justify-center p-2 md:p-4">
+        <div class="w-full max-w-6xl h-[calc(100vh-1rem)] md:h-[calc(100vh-2rem)] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-gray-100 dark:border-slate-800">
+            <div class="bg-blue-600 p-6 flex items-center justify-between text-white shrink-0">
+                <h3 class="font-black uppercase italic tracking-wider flex items-center gap-3 text-lg">
+                    <i class="fas fa-plus-circle text-blue-200"></i> New Order
+                </h3>
+                <button onclick="closeModal('newOrderModal')" class="w-8 h-8 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full transition-all text-white">&times;</button>
+            </div>
+            <div class="bg-gray-50 dark:bg-slate-950 border-t border-gray-100 dark:border-slate-800 flex-1 min-h-0 overflow-hidden">
+                <iframe
+                    id="newOrderFrame"
+                    src="about:blank"
+                    data-src="tracker_form.php?embedded=1"
+                    title="New Work Order Form"
+                    class="w-full h-full bg-white dark:bg-slate-900 overflow-auto"
+                ></iframe>
+            </div>
+        </div>
+    </div>
+</div>
 
+<!-- Existing Modals and Script Block -->
 <!-- (Rest of the modals: History, Summary, Help, Client Modal, etc.) -->
 <?php include 'tracker_modals.php'; ?>
 
 <script>
+function openNewOrderModal() {
+    const modal = $('#newOrderModal');
+    const frame = document.getElementById('newOrderFrame');
+    if (modal.length) {
+        if (frame && frame.dataset.src && frame.getAttribute('src') !== frame.dataset.src) {
+            frame.setAttribute('src', frame.dataset.src);
+        }
+        modal.removeClass('hidden');
+        document.body.classList.add('overflow-hidden');
+        // Add any other initialization logic for the modal here if needed
+        console.log('New Order modal opened.');
+    } else {
+        console.error('Error: newOrderModal element not found.');
+        Swal.fire({
+            icon: 'error',
+            title: 'Modal Error',
+            text: 'Could not find the necessary element to open the New Order modal.',
+            theme: $('html').hasClass('dark') ? 'dark' : 'default'
+        });
+    }
+}
+
+function closeModal(modalId) {
+    $(`#${modalId}`).addClass('hidden');
+    document.body.classList.remove('overflow-hidden');
+
+    if (modalId === 'newOrderModal') {
+        const frame = document.getElementById('newOrderFrame');
+        if (frame) {
+            frame.setAttribute('src', 'about:blank');
+        }
+    }
+}
+
+// ... rest of the existing script content ...
 $(document).ready(function() {
     // Handle AJAX tab switching
     $(document).on('click', '.tab-link', function(e) {
@@ -209,6 +268,16 @@ $(document).ready(function() {
     });
 });
 
+window.addEventListener('message', function(event) {
+    if (event.origin !== window.location.origin) return;
+    if (!event.data || event.data.type !== 'order_saved') return;
+
+    closeModal('newOrderModal');
+
+    const targetUrl = event.data.clientId ? `index.php?client_filter=${encodeURIComponent(event.data.clientId)}` : window.location.pathname + window.location.search;
+    window.location.href = targetUrl;
+});
+
 function toggleStats() {
     $('#dashboard-stats').toggleClass('hidden');
 }
@@ -218,8 +287,5 @@ function setViewMode(mode) {
     location.reload(); // Switching whole view mode still best with reload to ensure partials load correctly
 }
 </script>
-
-</div> <!-- End max-width -->
-</div> <!-- End themed background -->
 
 <?php include 'footer.php'; ?>

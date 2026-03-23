@@ -1,0 +1,11 @@
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
+    background: #4f46e5 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 12px !important;
+    font-weight: 900 !important;
+    font-size: 10px !important;
+    padding: 5px 12px !important;
+}
+table.dataTable.no-footer { border-bottom: 1px solid #f3f4f6 !important; }
+.dark table.dataTable.no-footer { border-bottom: 1px solid #1e293b !important; }

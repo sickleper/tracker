@@ -40,7 +40,8 @@ function setTrackerApiCookie(string $token): void
     setcookie('apitoken', $token, [
         'expires' => time() + (86400 * 30),
         'path' => '/',
-        'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+        'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https'),
         'httponly' => true,
         'samesite' => 'Lax',
     ]);
@@ -98,6 +99,41 @@ function renderLoginScreen(?string $error = null, bool $loggedOut = false): void
     exit();
 }
 
+function hydrateTrackerSessionFromAuth(array $data, string $fallbackEmail = ''): void
+{
+    session_regenerate_id(true);
+
+    unset(
+        $_SESSION['tenant_id'],
+        $_SESSION['tenant_slug'],
+        $_SESSION['user_auth_id'],
+        $_SESSION['role_id'],
+        $_SESSION['is_office'],
+        $_SESSION['user_id'],
+        $_SESSION['user_name'],
+        $_SESSION['user_email'],
+        $_SESSION['email'],
+        $_SESSION['google_id'],
+        $_SESSION['access_token'],
+        $_SESSION['logged_out']
+    );
+
+    $_SESSION['api_token'] = $data['token'] ?? null;
+    $_SESSION['user_id'] = $data['user_id'] ?? null;
+    $_SESSION['tenant_id'] = $data['tenant_id'] ?? null;
+    $_SESSION['tenant_slug'] = $data['tenant_slug'] ?? null;
+    $_SESSION['user_auth_id'] = $data['user_auth_id'] ?? null;
+    $_SESSION['role_id'] = $data['role_id'] ?? null;
+    $_SESSION['is_office'] = !empty($data['is_office']);
+    $_SESSION['user_name'] = $data['name'] ?? 'User';
+    $_SESSION['user_email'] = $data['email'] ?? $fallbackEmail;
+    $_SESSION['email'] = $data['email'] ?? $fallbackEmail;
+
+    if (isset($data['google_id'])) {
+        $_SESSION['google_id'] = $data['google_id'];
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['login_mode'] ?? '') === 'admin_password') {
     $email = trim((string) ($_POST['email'] ?? ''));
     $password = (string) ($_POST['password'] ?? '');
@@ -136,34 +172,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['login_mode'] ?? '') === 'a
         renderLoginScreen($data['message'] ?? 'Invalid login details.');
     }
 
-    $superAdminEmail = trackerSuperAdminEmail();
-    if (($data['email'] ?? '') !== $superAdminEmail) {
+    $isOfficeUser = !empty($data['is_office']);
+    $isSuperAdmin = (($data['email'] ?? '') === trackerSuperAdminEmail());
+
+    if (!$isOfficeUser && !$isSuperAdmin) {
+        // Explicitly revoke token for non-office, non-admin users trying password login
         $revoke = curl_init();
         curl_setopt($revoke, CURLOPT_URL, rtrim($_ENV['LARAVEL_API_URL'] ?? '', '/') . '/api/logout');
         curl_setopt($revoke, CURLOPT_POST, true);
         curl_setopt($revoke, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($revoke, CURLOPT_HTTPHEADER, [
             'Accept: application/json',
-            'Authorization: Bearer ' . $data['token'],
+            'Authorization: ' . 'Bearer ' . $data['token'],
         ]);
         curl_exec($revoke);
         curl_close($revoke);
-        renderLoginScreen('Password login is restricted to the system administrator.');
+        renderLoginScreen('Password login is restricted to superadmin and office staff.');
+        exit();
     }
 
-    $_SESSION['api_token'] = $data['token'];
-    $_SESSION['user_id'] = $data['user_id'] ?? null;
-    $_SESSION['tenant_id'] = $data['tenant_id'] ?? ($_SESSION['tenant_id'] ?? null);
-    $_SESSION['user_auth_id'] = $data['user_auth_id'] ?? null;
-    $_SESSION['role_id'] = $data['role_id'] ?? ($_SESSION['role_id'] ?? null);
-    $_SESSION['is_office'] = !empty($data['is_office']);
-    $_SESSION['user_name'] = $data['name'] ?? 'Admin';
-    $_SESSION['user_email'] = $data['email'] ?? $email;
-    $_SESSION['email'] = $data['email'] ?? $email;
-    unset($_SESSION['access_token'], $_SESSION['google_id'], $_SESSION['logged_out']);
+    hydrateTrackerSessionFromAuth($data, $email);
 
     setTrackerApiCookie($data['token']);
-    header('Location: admin/index.php');
+    
+    // Redirect admin to admin area, office staff to main index
+    if ($isSuperAdmin) {
+        header('Location: admin/index.php');
+    } else {
+        header('Location: index.php');
+    }
     exit();
 }
 
@@ -232,17 +269,7 @@ if (isset($_GET['code'])) {
             handleOAuthError("Laravel API login failed with status {$http_code}: " . ($api_data['message'] ?? 'No token or description provided'));
         }
 
-        $_SESSION['api_token'] = $api_data['token'];
-        $_SESSION['user_id'] = $api_data['user_id'];
-        $_SESSION['tenant_id'] = $api_data['tenant_id'] ?? ($_SESSION['tenant_id'] ?? null);
-        $_SESSION['user_auth_id'] = $api_data['user_auth_id']; // Assuming user_auth_id is returned by the API
-        $_SESSION['role_id'] = $api_data['role_id'] ?? ($_SESSION['role_id'] ?? null);
-        $_SESSION['is_office'] = !empty($api_data['is_office']);
-        $_SESSION['user_name'] = $api_data['name'];
-        $_SESSION['user_email'] = $api_data['email'];
-        $_SESSION['email'] = $api_data['email'];
-        $_SESSION['google_id'] = $api_data['google_id'];
-        unset($_SESSION['logged_out']);
+        hydrateTrackerSessionFromAuth($api_data, $email);
 
         setTrackerApiCookie($api_data['token']);
 

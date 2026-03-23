@@ -9,9 +9,10 @@ if (!isTrackerAuthenticated()) {
     exit();
 }
 
-// RESTRICT: Only Websites Dublin can access admin
-$superAdminEmail = trackerSuperAdminEmail();
-if (($_SESSION['email'] ?? '') !== $superAdminEmail) {
+$isSuperAdmin = isTrackerSuperAdmin();
+$isAdminUser = isTrackerAdminUser();
+
+if (!$isAdminUser) {
     header('Location: ../index.php');
     exit();
 }
@@ -28,6 +29,7 @@ include '../nav.php';
             <p class="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-widest mt-1">Manage users, project categories, and global settings.</p>
         </div>
         <div class="flex gap-3">
+            <?php if ($isSuperAdmin): ?>
             <a href="profile.php" class="bg-white dark:bg-slate-900 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-slate-700 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-sky-50 dark:hover:bg-slate-800 transition-all active:scale-95 shadow-xl flex items-center gap-2">
                 <i class="fas fa-id-card"></i> Profile
             </a>
@@ -40,6 +42,7 @@ include '../nav.php';
             <a href="deploy.php" class="bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-slate-700 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-50 dark:hover:bg-slate-800 transition-all active:scale-95 shadow-xl flex items-center gap-2">
                 <i class="fas fa-rocket"></i> Deploy
             </a>
+            <?php endif; ?>
             <button id="mainAddBtn" onclick="openAddModal()" class="bg-gray-900 dark:bg-indigo-600 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-800 dark:hover:bg-indigo-700 transition-all active:scale-95 shadow-xl flex items-center gap-2">
                 <i class="fas fa-plus-circle text-emerald-400"></i> <span id="addBtnText">Add New Category</span>
             </button>
@@ -55,9 +58,11 @@ include '../nav.php';
             <button data-tab="users" class="admin-tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-slate-400 dark:hover:text-slate-200 whitespace-nowrap py-4 px-1 border-b-2 font-black text-xs uppercase tracking-widest flex items-center gap-2">
                 <i class="fas fa-users"></i> User Management
             </button>
+            <?php if ($isAdminUser): ?>
             <button data-tab="global-settings" class="admin-tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-slate-400 dark:hover:text-slate-200 whitespace-nowrap py-4 px-1 border-b-2 font-black text-xs uppercase tracking-widest flex items-center gap-2">
                 <i class="fas fa-cogs"></i> Global Settings
             </button>
+            <?php endif; ?>
             <button data-tab="leave-types" class="admin-tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-slate-400 dark:hover:text-slate-200 whitespace-nowrap py-4 px-1 border-b-2 font-black text-xs uppercase tracking-widest flex items-center gap-2">
                 <i class="fas fa-calendar-alt"></i> Leave Types
             </button>
@@ -135,7 +140,60 @@ include '../nav.php';
         </div>
 
         <!-- Tab: Global Settings -->
+        <?php if ($isAdminUser): ?>
         <div id="tab-global-settings" class="admin-tab-pane hidden">
+            <?php if ($isSuperAdmin): ?>
+            <div class="card-base p-8 space-y-6 border-none mb-8">
+                <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                    <div>
+                        <h4 class="text-xs font-black uppercase tracking-widest text-indigo-500 flex items-center gap-2">
+                            <i class="fas fa-plug text-gray-300"></i> App Connection
+                        </h4>
+                        <p class="mt-2 text-sm font-semibold text-gray-500 dark:text-slate-400">
+                            Local bootstrap settings stored on this tracker server. These are used before Laravel runtime settings load.
+                        </p>
+                    </div>
+                    <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">
+                        Superadmin Only
+                    </div>
+                </div>
+                <form id="appBootstrapForm" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">App Name</label>
+                            <input type="text" name="app_name" id="bootstrapAppName" class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all" placeholder="Tracker Dublin">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Default Tenant</label>
+                            <input type="text" name="default_tenant" id="bootstrapDefaultTenant" class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all" placeholder="tenant-slug">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Tracker App URL</label>
+                            <input type="url" name="app_url" id="bootstrapAppUrl" class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all" placeholder="https://tracker.example.com">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Laravel API URL</label>
+                            <input type="url" name="laravel_api_url" id="bootstrapLaravelApiUrl" class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all" placeholder="https://api.example.com">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs font-bold text-gray-500 dark:text-slate-400">
+                        <div class="rounded-2xl border border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950 p-4">
+                            <span class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Current Runtime API URL</span>
+                            <span id="bootstrapRuntimeApiUrl" class="break-all"><?php echo htmlspecialchars($laravelApiUrl ?? '', ENT_QUOTES, 'UTF-8'); ?></span>
+                        </div>
+                        <div class="rounded-2xl border border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950 p-4">
+                            <span class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Local Storage File</span>
+                            <span class="break-all"><?php echo htmlspecialchars(TRACKER_BOOTSTRAP_CONFIG_PATH, ENT_QUOTES, 'UTF-8'); ?></span>
+                        </div>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="submit" class="bg-slate-900 dark:bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-black dark:hover:bg-indigo-700 transition-all shadow-xl active:scale-95 flex items-center gap-3">
+                            <i class="fas fa-save"></i> Save App Connection
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <?php endif; ?>
             <div id="globalSettingsSubTabs" class="mb-6 flex flex-wrap gap-2">
                 <!-- Sub-tabs loaded via AJAX -->
             </div>
@@ -150,6 +208,7 @@ include '../nav.php';
                 </div>
             </form>
         </div>
+        <?php endif; ?>
 
         <!-- Tab: Leave Types -->
         <div id="tab-leave-types" class="admin-tab-pane hidden">
@@ -179,6 +238,26 @@ include '../nav.php';
         <div id="tab-maintenance" class="admin-tab-pane hidden">
             <div class="card-base border-none p-6 space-y-4">
                 <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-4">System Maintenance Tools</h3>
+                <div class="rounded-2xl border border-indigo-200 dark:border-indigo-900/40 bg-indigo-50 dark:bg-indigo-950/20 p-4">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                        <div>
+                            <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500">Tenant Context</p>
+                            <p class="mt-2 text-sm font-bold text-gray-700 dark:text-slate-200">
+                                Default tenant-aware maintenance calls will run against the current runtime tenant.
+                            </p>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-bold text-gray-600 dark:text-slate-300">
+                            <div class="rounded-xl border border-white/70 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-3">
+                                <span class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Tenant Slug</span>
+                                <span id="maintenanceTenantSlug" class="break-all"><?php echo htmlspecialchars(trackerTenantSlug() ?: 'Not resolved', ENT_QUOTES, 'UTF-8'); ?></span>
+                            </div>
+                            <div class="rounded-xl border border-white/70 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-3">
+                                <span class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Tenant ID</span>
+                                <span id="maintenanceTenantId"><?php echo htmlspecialchars((string) ($_SESSION['tenant_id'] ?? 'Unknown'), ENT_QUOTES, 'UTF-8'); ?></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <button id="clearCacheBtn" class="admin-action-btn bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-xl flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all">
                         <i class="fas fa-broom"></i> Clear Application Cache (cache:clear)
@@ -416,9 +495,30 @@ include '../nav.php';
 
 <script>
 $(document).ready(function() {
-    window.laravelApiUrl = '<?php echo $_ENV['LARAVEL_API_URL'] ?? ''; ?>';
+    window.laravelApiUrl = <?php echo json_encode($laravelApiUrl ?? ''); ?>;
     window.apiToken = '<?php echo htmlspecialchars(getTrackerApiToken() ?? '', ENT_QUOTES, 'UTF-8'); ?>';
+    window.appBootstrapConfig = {};
     window.allClients = [];
+    window.isTrackerSuperAdmin = <?php echo $isSuperAdmin ? 'true' : 'false'; ?>;
+    window.officeSettingsAccessMap = {
+        users: null,
+        'Business Rules': null,
+        localization: null,
+        fleet: null,
+        finances: null,
+        general: null,
+        apis: [
+            'gmail_workorder_lookback_days',
+            'booking_service_radius_km',
+            'booking_recommended_max_marginal_cost',
+            'booking_near_base_max_distance_km'
+        ],
+        twilio: [
+            'whatsapp_join_number',
+            'whatsapp_admin_number',
+            'whatsapp_admin_alerts_enabled'
+        ]
+    };
 
     function escapeHtml(value) {
         return String(value ?? '')
@@ -431,6 +531,36 @@ $(document).ready(function() {
 
     function safeJsString(value) {
         return String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    }
+
+    function accessBadgeHtml(level) {
+        if (level === 'superadmin') {
+            return '<span class="ml-2 inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">Superadmin</span>';
+        }
+        return '<span class="ml-2 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300">Office</span>';
+    }
+
+    function getSettingAccessLevel(group, key) {
+        const map = window.officeSettingsAccessMap || {};
+        if (!Object.prototype.hasOwnProperty.call(map, group)) {
+            return 'superadmin';
+        }
+
+        const allowedKeys = map[group];
+        if (allowedKeys === null) {
+            return 'office';
+        }
+
+        return allowedKeys.includes(key) ? 'office' : 'superadmin';
+    }
+
+    function getGroupAccessLevel(group, settings) {
+        if (!Array.isArray(settings) || settings.length === 0) {
+            return 'office';
+        }
+
+        const levels = settings.map(setting => getSettingAccessLevel(group, setting.key));
+        return levels.every(level => level === 'office') ? 'office' : 'superadmin';
     }
 
     function updateCategoryLogoPreview(value) {
@@ -823,11 +953,86 @@ $(document).ready(function() {
         });
     }
 
+    window.loadAppBootstrapSettings = function() {
+        $.getJSON('app_bootstrap_handler.php', function(res) {
+            if (!res.success) {
+                Swal.fire({ ...getSwalConfig(), icon: 'error', title: 'Bootstrap Load Failed', text: res.message || 'Unable to load app connection settings.' });
+                return;
+            }
+
+            const data = res.data || {};
+            window.appBootstrapConfig = data;
+            $('#bootstrapAppName').val(data.app_name || '');
+            $('#bootstrapAppUrl').val(data.app_url || '');
+            $('#bootstrapLaravelApiUrl').val(data.laravel_api_url || '');
+            $('#bootstrapDefaultTenant').val(data.default_tenant || data.default_tenant_slug || '');
+            $('#bootstrapRuntimeApiUrl').text(data.laravel_api_url || window.laravelApiUrl || '');
+        }).fail(function(xhr) {
+            const message = xhr.responseJSON?.message || 'Unable to load app connection settings.';
+            Swal.fire({ ...getSwalConfig(), icon: 'error', title: 'Bootstrap Load Failed', text: message });
+        });
+    }
+
+    $('#appBootstrapForm').submit(function(e) {
+        e.preventDefault();
+
+        const form = $(this);
+        const submitBtn = form.find('button[type="submit"]');
+        const originalText = submitBtn.html();
+        const previousApiUrl = window.laravelApiUrl || '';
+
+        submitBtn.prop('disabled', true).html('<i class="fas fa-circle-notch fa-spin"></i> Saving...');
+
+        $.ajax({
+            url: 'app_bootstrap_handler.php',
+            method: 'POST',
+            data: form.serialize(),
+            dataType: 'json',
+            success: function(res) {
+                if (!res.success) {
+                    Swal.fire({ ...getSwalConfig(), icon: 'error', title: 'Save Failed', text: res.message || 'Unable to save app connection settings.' });
+                    return;
+                }
+
+                const data = res.data || {};
+                window.appBootstrapConfig = data;
+                window.laravelApiUrl = data.laravel_api_url || '';
+                $('#bootstrapRuntimeApiUrl').text(window.laravelApiUrl || '');
+
+                const apiUrlChanged = previousApiUrl !== (window.laravelApiUrl || '');
+                Swal.fire({
+                    ...getSwalConfig(),
+                    icon: 'success',
+                    title: 'App Connection Saved',
+                    text: apiUrlChanged ? 'Bootstrap updated. Reloading to apply the new API base URL.' : 'Bootstrap settings updated.',
+                    timer: apiUrlChanged ? 1400 : 1800,
+                    showConfirmButton: false
+                });
+
+                if (apiUrlChanged) {
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 900);
+                }
+            },
+            error: function(xhr) {
+                const message = xhr.responseJSON?.message || 'Unable to save app connection settings.';
+                Swal.fire({ ...getSwalConfig(), icon: 'error', title: 'Save Failed', text: message });
+            },
+            complete: function() {
+                submitBtn.prop('disabled', false).html(originalText);
+            }
+        });
+    });
+
     // --- Global Settings Functions ---
     window.loadGlobalSettings = function() {
         const container = $('#settingsContainer');
         const tabsContainer = $('#globalSettingsSubTabs');
-        container.html('<div class="flex flex-col items-center justify-center py-32 bg-white dark:bg-slate-900/20"><i class="fas fa-circle-notch fa-spin text-4xl text-indigo-500 mb-4"></i><p class="text-[10px] font-black uppercase tracking-widest text-gray-400">Loading Global Settings...</p></div>');
+        const settingsIntroHtml = window.isTrackerSuperAdmin
+            ? '<div class="mb-6 rounded-2xl border border-indigo-200 dark:border-indigo-900/40 bg-indigo-50 dark:bg-indigo-950/20 px-5 py-4 text-sm font-semibold text-indigo-900 dark:text-indigo-100">Access labels are shown on each settings group and field. <span class="font-black">Office</span> settings are safe for operational admins. <span class="font-black">Superadmin</span> settings are restricted to platform-level control.</div>'
+            : '<div class="mb-6 rounded-2xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50 dark:bg-emerald-950/20 px-5 py-4 text-sm font-semibold text-emerald-900 dark:text-emerald-100">You are viewing the office-safe settings subset for this app.</div>';
+        container.html(settingsIntroHtml + '<div class="flex flex-col items-center justify-center py-32 bg-white dark:bg-slate-900/20"><i class="fas fa-circle-notch fa-spin text-4xl text-indigo-500 mb-4"></i><p class="text-[10px] font-black uppercase tracking-widest text-gray-400">Loading Global Settings...</p></div>');
         tabsContainer.empty();
         
         // Ensure we have clients for the pickers
@@ -841,7 +1046,7 @@ $(document).ready(function() {
                     
                     $.getJSON('../leads/leads_handler.php?action=get_global_settings', function(res) {
                         if (res.success) {
-                            container.empty();
+                            container.html(settingsIntroHtml);
                             tabsContainer.empty();
 
                             if (!res.data.apis) {
@@ -861,11 +1066,15 @@ $(document).ready(function() {
                                 });
                             }
 
+                            const hasSettingKey = (key) => Object.values(res.data).some(groupItems =>
+                                Array.isArray(groupItems) && groupItems.some(setting => setting.key === key)
+                            );
+
                             const ensureSetting = (group, key, value, description) => {
                                 if (!res.data[group]) {
                                     res.data[group] = [];
                                 }
-                                if (!res.data[group].some(setting => setting.key === key)) {
+                                if (!hasSettingKey(key)) {
                                     res.data[group].push({
                                         key,
                                         value,
@@ -878,6 +1087,11 @@ $(document).ready(function() {
                             ensureSetting('apis', 'booking_service_radius_km', '60', 'Booking Service Radius (km)');
                             ensureSetting('apis', 'booking_recommended_max_marginal_cost', '10', 'Booking Recommended Max Marginal Cost');
                             ensureSetting('apis', 'booking_near_base_max_distance_km', '20', 'Booking Near Base Max Distance (km)');
+                            ensureSetting('twilio', 'whatsapp_join_number', '', 'WhatsApp Join Number');
+                            ensureSetting('twilio', 'whatsapp_admin_number', '', 'Administrative WhatsApp Number');
+                            ensureSetting('twilio', 'whatsapp_admin_alerts_enabled', '1', 'Enable Admin WhatsApp Alerts (1=on, 0=off)');
+                            ensureSetting('general', 'vehicle_document_reminder_days', '30', 'Vehicle Document Reminder Window (days)');
+                            ensureSetting('general', 'vehicle_service_reminder_days', '30', 'Vehicle Service Reminder Window (days)');
                             
                             const groups = Object.keys(res.data);
                             const userSettingsContainer = $('#userSettingsContainer');
@@ -936,24 +1150,27 @@ $(document).ready(function() {
 
                                 const groupId = `gs-group-${group.replace(/[^a-z0-9]/gi, '-')}`;
                                 const groupTitle = group.charAt(0).toUpperCase() + group.slice(1);
+                                const groupAccessLevel = getGroupAccessLevel(group, res.data[group]);
+                                const groupBadge = accessBadgeHtml(groupAccessLevel);
                                 
                                 // Create Sub-tab button
-                                const activeTabClass = index === 0 ? 'bg-indigo-600 text-white shadow-lg' : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700';
                                 tabsContainer.append(`
-                                    <button type="button" data-gs-tab="${groupId}" class="gs-tab-btn px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTabClass}">
+                                    <button type="button" data-gs-tab="${groupId}" class="${GLOBAL_SETTINGS_TAB_BASE_CLASS} ${GLOBAL_SETTINGS_TAB_INACTIVE_CLASS}">
                                         ${escapeHtml(groupTitle)}
                                     </button>
                                 `);
                                 
                                 // Create tab pane
                                 let groupHtml = `
-                                    <div id="${groupId}" class="gs-tab-pane ${index === 0 ? '' : 'hidden'} card-base p-8 space-y-8 animate-fade-in">
+                                    <div id="${groupId}" class="gs-tab-pane hidden card-base p-8 space-y-8 animate-fade-in">
                                         <h4 class="text-xs font-black uppercase tracking-widest text-indigo-500 mb-6 flex items-center gap-2 border-b border-gray-100 dark:border-slate-800 pb-4">
-                                            <i class="fas fa-folder text-gray-300"></i> ${escapeHtml(groupTitle)} Configuration
+                                            <i class="fas fa-folder text-gray-300"></i> ${escapeHtml(groupTitle)} Configuration ${groupBadge}
                                         </h4>
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">`;
                                 
                                 res.data[group].forEach(setting => {
+                                    const accessLevel = getSettingAccessLevel(group, setting.key);
+                                    const settingBadge = accessBadgeHtml(accessLevel);
                                     if (setting.key === 'callout_days') {
                                         const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                                         const activeDays = (setting.value || '').split(',').map(Number);
@@ -961,7 +1178,7 @@ $(document).ready(function() {
                                         let dayPickerHtml = `
                                             <div class="col-span-1 md:col-span-2">
                                                 <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 ml-1">
-                                                    ${escapeHtml(setting.description)}
+                                                    ${escapeHtml(setting.description)} ${settingBadge}
                                                 </label>
                                                 <div class="flex flex-wrap gap-2">`;
                                         
@@ -986,7 +1203,7 @@ $(document).ready(function() {
                                         let clientPickerHtml = `
                                             <div class="col-span-1 md:col-span-2">
                                                 <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 ml-1">
-                                                    ${escapeHtml(setting.description)}
+                                                    ${escapeHtml(setting.description)} ${settingBadge}
                                                 </label>
                                                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">`;
                                         
@@ -1006,6 +1223,19 @@ $(document).ready(function() {
                                         clientPickerHtml += `</div><input type="hidden" name="${escapeHtml(setting.key)}" id="${escapeHtml(setting.key)}_hidden" value="${escapeHtml(setting.value || '')}"></div>`;
                                         groupHtml += clientPickerHtml;
                                     }
+                                    else if (setting.key === 'whatsapp_admin_alerts_enabled') {
+                                        const enabled = String(setting.value ?? '1') === '1';
+                                        groupHtml += `
+                                            <div>
+                                                <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">
+                                                    ${escapeHtml(setting.description || 'Admin WhatsApp Alerts')} ${settingBadge}
+                                                </label>
+                                                <select name="${escapeHtml(setting.key)}" class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                                                    <option value="1" ${enabled ? 'selected' : ''}>On</option>
+                                                    <option value="0" ${!enabled ? 'selected' : ''}>Off</option>
+                                                </select>
+                                            </div>`;
+                                    }
                                     else {
                                         const numericSettings = new Set([
                                             'gmail_workorder_lookback_days',
@@ -1017,7 +1247,7 @@ $(document).ready(function() {
                                         groupHtml += `
                                             <div>
                                                 <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">
-                                                    ${escapeHtml(setting.description || setting.key)}
+                                                    ${escapeHtml(setting.description || setting.key)} ${settingBadge}
                                                 </label>
                                                 <input type="${isNumberSetting ? 'number' : 'text'}" name="${escapeHtml(setting.key)}" value="${escapeHtml(setting.value || '')}" ${isNumberSetting ? 'step="0.1"' : ''} class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
                                             </div>`;
@@ -1030,12 +1260,9 @@ $(document).ready(function() {
 
                             // Attach sub-tab switching listener
                             $('.gs-tab-btn').off('click').on('click', function() {
-                                const target = $(this).data('gs-tab');
-                                $('.gs-tab-btn').removeClass('bg-indigo-600 text-white shadow-lg').addClass('bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-slate-400');
-                                $(this).removeClass('bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-slate-400').addClass('bg-indigo-600 text-white shadow-lg');
-                                $('.gs-tab-pane').addClass('hidden');
-                                $(`#${target}`).removeClass('hidden');
+                                activateGlobalSettingsTab($(this).data('gs-tab'));
                             });
+                            activateGlobalSettingsTab(preservedGlobalSettingsTabId);
 
                             // Attach listener for the name picker checkboxes
                             $(document).off('change', '.client-name-cb').on('change', '.client-name-cb', function() {
@@ -1057,6 +1284,31 @@ $(document).ready(function() {
             container.html('<div class="p-12 text-center text-red-500 font-bold">Failed to load client data.</div>');
             Swal.fire({ ...getSwalConfig(), icon: 'error', title: 'Settings Load Failed', text: 'Failed to load client data.' });
         });
+    }
+
+    const GLOBAL_SETTINGS_TAB_BASE_CLASS = 'gs-tab-btn px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all';
+    const GLOBAL_SETTINGS_TAB_ACTIVE_CLASS = 'bg-indigo-600 text-white shadow-lg';
+    const GLOBAL_SETTINGS_TAB_INACTIVE_CLASS = 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700';
+    let preservedGlobalSettingsTabId = null;
+
+    function activateGlobalSettingsTab(tabId) {
+        const buttons = $('.gs-tab-btn');
+        if (!buttons.length) return;
+        const desiredId = tabId && buttons.filter(`[data-gs-tab="${tabId}"]`).length ? tabId : buttons.first().data('gs-tab');
+        if (!desiredId) return;
+        preservedGlobalSettingsTabId = desiredId;
+        buttons.each(function() {
+            $(this)
+                .removeClass(GLOBAL_SETTINGS_TAB_ACTIVE_CLASS)
+                .removeClass(GLOBAL_SETTINGS_TAB_INACTIVE_CLASS)
+                .addClass(GLOBAL_SETTINGS_TAB_INACTIVE_CLASS);
+        });
+        const activeButton = buttons.filter(`[data-gs-tab="${desiredId}"]`);
+        activeButton
+            .removeClass(GLOBAL_SETTINGS_TAB_INACTIVE_CLASS)
+            .addClass(GLOBAL_SETTINGS_TAB_ACTIVE_CLASS);
+        $('.gs-tab-pane').addClass('hidden');
+        $(`#${desiredId}`).removeClass('hidden');
     }
 
     $('#globalSettingsForm').submit(function(e) {
@@ -1189,35 +1441,53 @@ $(document).ready(function() {
     }
 
     // --- Maintenance Functions ---
+    function getMaintenanceTenantContext() {
+        return {
+            tenant_slug: String(window.trackerTenantSlug || '').trim(),
+            tenant_id: String(<?php echo json_encode((string) ($_SESSION['tenant_id'] ?? '')); ?>).trim()
+        };
+    }
+
+    function runMaintenanceAction(action, successTitle) {
+        const tenantContext = getMaintenanceTenantContext();
+        const payload = {
+            action,
+            tenant_slug: tenantContext.tenant_slug,
+            tenant_id: tenantContext.tenant_id
+        };
+
+        $.post('../admin/maintenance_handler.php', payload, function(res) {
+            if (res.success) {
+                Swal.fire({ ...getSwalConfig(), icon: 'success', title: successTitle, text: res.message });
+                if (res.tenant_slug) {
+                    $('#maintenanceTenantSlug').text(res.tenant_slug);
+                }
+            } else {
+                Swal.fire({ ...getSwalConfig(), icon: 'error', title: 'Maintenance Failed', text: res.message || 'Request failed.' });
+            }
+        }, 'json').fail(function(xhr) {
+            const message = xhr.responseJSON?.message || 'Request failed.';
+            Swal.fire({ ...getSwalConfig(), icon: 'error', title: 'Maintenance Failed', text: message });
+        });
+    }
+
     window.clearCache = function() {
-        $.post('../admin/maintenance_handler.php', { action: 'clear_cache' }, (res) => {
-            if (res.success) Swal.fire({ ...getSwalConfig(), icon: 'success', title: 'Cache Cleared!', text: res.message });
-        }, 'json');
+        runMaintenanceAction('clear_cache', 'Cache Cleared!');
     }
     window.clearLogs = function() {
-        $.post('../admin/maintenance_handler.php', { action: 'clear_logs' }, (res) => {
-            if (res.success) Swal.fire({ ...getSwalConfig(), icon: 'success', title: 'Logs Cleared!', text: res.message });
-        }, 'json');
+        runMaintenanceAction('clear_logs', 'Logs Cleared!');
     }
     window.clearSessions = function() {
-        $.post('../admin/maintenance_handler.php', { action: 'clear_sessions' }, (res) => {
-            if (res.success) Swal.fire({ ...getSwalConfig(), icon: 'success', title: 'Sessions Cleared!', text: res.message });
-        }, 'json');
+        runMaintenanceAction('clear_sessions', 'Sessions Cleared!');
     }
     window.clearRouteCache = function() {
-        $.post('../admin/maintenance_handler.php', { action: 'clear_route_cache' }, (res) => {
-            if (res.success) Swal.fire({ ...getSwalConfig(), icon: 'success', title: 'Route Cache Cleared!', text: res.message });
-        }, 'json');
+        runMaintenanceAction('clear_route_cache', 'Route Cache Cleared!');
     }
     window.clearConfigCache = function() {
-        $.post('../admin/maintenance_handler.php', { action: 'clear_config_cache' }, (res) => {
-            if (res.success) Swal.fire({ ...getSwalConfig(), icon: 'success', title: 'Config Cache Cleared!', text: res.message });
-        }, 'json');
+        runMaintenanceAction('clear_config_cache', 'Config Cache Cleared!');
     }
     window.optimizeClear = function() {
-        $.post('../admin/maintenance_handler.php', { action: 'optimize_clear' }, (res) => {
-            if (res.success) Swal.fire({ ...getSwalConfig(), icon: 'success', title: 'All Compiled Cleared!', text: res.message });
-        }, 'json');
+        runMaintenanceAction('optimize_clear', 'All Compiled Cleared!');
     }
 
     $('#clearCacheBtn').on('click', clearCache);
@@ -1335,7 +1605,10 @@ $(document).ready(function() {
             $('#mainAddBtn').attr('onclick', 'openAddModal()');
         }
 
-        if (tab === 'global-settings') loadGlobalSettings();
+        if (tab === 'global-settings') {
+            loadAppBootstrapSettings();
+            loadGlobalSettings();
+        }
         if (tab === 'categories') loadCategories();
         if (tab === 'leave-types') loadLeaveTypes();
         if (tab === 'users') {

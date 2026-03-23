@@ -392,6 +392,7 @@ class NotificationService {
             $twilioClient->setEdge('ie1');
         }
 
+        $vars = [];
         if (!empty($templateSid)) {
             $vars = [
                 '1' => str_replace(["\r", "\n", "\t"], ' ', (string)($task['po_number'] ?? 'N/A')),
@@ -400,26 +401,108 @@ class NotificationService {
                 '4' => (string)($taskPreview ?: 'No details'),
                 '5' => (string)$publicLink
             ];
-
-            $messageParams = [
-                'from' => $from,
-                'contentSid' => trim($templateSid),
-                'contentVariables' => json_encode($vars)
-            ];
-        } else {
-            $messageParams = ['from' => $from, 'body' => $body];
         }
 
-        $message = $twilioClient->messages->create($to, $messageParams);
-
-        if ($message->sid) {
-            // Update whatsapp_sent status via API
+        $payload = $this->sendWhatsAppMessage($mobile, $body, trim($templateSid), $vars);
+        if ($payload['success']) {
             $this->makeApiCall('PATCH', "/api/tasks/{$taskId}", ['whatsapp_sent' => 'Yes']);
-            // The logHistory call should be handled by the API itself or the calling TrackerRequestHandler
-            return ['success' => true, 'message' => 'WhatsApp message sent successfully!'];
         }
-        
-        return ['success' => false, 'message' => 'Failed to send WhatsApp message'];
+        return $payload;
+    }
+
+    private function sendWhatsAppMessage(string $rawTo, string $body, ?string $templateSid = null, array $templateVars = []): array
+    {
+        $sid = $GLOBALS['twilio_sid'] ?? $_ENV['TWILIO_SID'] ?? '';
+        $token = $GLOBALS['twilio_auth_token'] ?? $_ENV['TWILIO_AUTH_TOKEN'] ?? '';
+        $fromNumber = $GLOBALS['twilio_whatsapp_from'] ?? $_ENV['TWILIO_WHATSAPP_FROM'] ?? $_ENV['TWILIO_PHONE_NUMBER'] ?? $_ENV['TWILIO_FROM'] ?? '+14155238886';
+
+        if (!$sid || !$token) {
+            return ['success' => false, 'message' => 'Twilio credentials missing.'];
+        }
+
+        $cleanFrom = $this->formatWhatsAppNumber($fromNumber);
+        $cleanTo = $this->formatWhatsAppNumber($rawTo);
+        if ($cleanFrom === '' || $cleanTo === '') {
+            return ['success' => false, 'message' => 'Invalid WhatsApp number.'];
+        }
+
+        $params = [
+            'from' => 'whatsapp:' . $cleanFrom
+        ];
+        $twilioClient = new Client($sid, $token);
+        if (!empty($templateSid)) {
+            $params['contentSid'] = trim($templateSid);
+            if (!empty($templateVars)) {
+                $params['contentVariables'] = json_encode($templateVars);
+            }
+        } else {
+            $params['body'] = trim($body);
+        }
+
+        if (!empty($_ENV['TWILIO_EDGE']) && $_ENV['TWILIO_EDGE'] === 'ie1') {
+            $twilioClient->setEdge('ie1');
+        }
+
+        $message = $twilioClient->messages->create('whatsapp:' . $cleanTo, $params);
+        if ($message->sid) {
+            return ['success' => true, 'message' => 'WhatsApp message sent successfully.'];
+        }
+
+        return ['success' => false, 'message' => 'Failed to send WhatsApp message.'];
+    }
+
+    private function formatWhatsAppNumber(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '') return '';
+
+        $value = preg_replace('/^whatsapp:/i', '', $value);
+        $digits = preg_replace('/[^0-9+]/', '', $value);
+        if ($digits === '') return '';
+
+        if (str_starts_with($digits, '+')) {
+            return '+' . ltrim($digits, '+');
+        }
+
+        if (str_starts_with($digits, '0')) {
+            return '+353' . ltrim($digits, '0');
+        }
+
+        return '+' . ltrim($digits, '0');
+    }
+
+    public function sendAdminReminderWhatsApp(array $reminders): array
+    {
+        $enabledFlag = trim((string) ($GLOBALS['whatsapp_admin_alerts_enabled'] ?? $_ENV['WHATSAPP_ADMIN_ALERTS_ENABLED'] ?? '1'));
+        if ($enabledFlag !== '' && !in_array($enabledFlag, ['1', 'true', 'True'], true)) {
+            return ['success' => false, 'message' => 'Admin WhatsApp alerts are disabled.'];
+        }
+
+        $adminNumber = trim((string) ($GLOBALS['whatsapp_admin_number'] ?? $_ENV['WHATSAPP_ADMIN_NUMBER'] ?? ''));
+        if ($adminNumber === '') {
+            return ['success' => false, 'message' => 'Admin WhatsApp number is not configured.'];
+        }
+
+        $lines = [];
+        foreach (array_slice($reminders, 0, 4) as $index => $reminder) {
+            $leadLabel = trim((string) ($reminder['lead_name'] ?? $reminder['lead_email'] ?? 'Lead'));
+            $when = $reminder['reminder_at'] ?? $reminder['next_follow_up_date'] ?? '';
+            $whenLabel = 'Scheduled';
+            if ($when) {
+                $timestamp = strtotime($when);
+                if ($timestamp !== false) {
+                    $whenLabel = date('M j H:i', $timestamp);
+                }
+            }
+            $lines[] = sprintf("%d) %s - %s", $index + 1, $leadLabel, $whenLabel);
+        }
+
+        if (empty($lines)) {
+            return ['success' => false, 'message' => 'No reminders to send.'];
+        }
+
+        $body = "*Tracker Alert: New Notification(s)*\n" . implode("\n", $lines) . "\nView: " . $this->trackerAppUrl() . "/leads/leads.php";
+        return $this->sendWhatsAppMessage($adminNumber, $body);
     }
 
     /**

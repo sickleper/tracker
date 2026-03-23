@@ -86,6 +86,19 @@ elseif($p == 'high') $prioColor = 'bg-orange-100 text-orange-700 dark:bg-amber-9
 elseif($p == 'medium') $prioColor = 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400';
 elseif($p == 'low') $prioColor = 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
 
+$mapQuery = '';
+$geoLat = $job['latitude'] ?? $job['lat'] ?? null;
+$geoLng = $job['longitude'] ?? $job['lng'] ?? null;
+if (!empty($geoLat) && !empty($geoLng)) {
+    $mapQuery = "{$geoLat},{$geoLng}";
+} elseif (!empty($job['location'])) {
+    $mapQuery = $job['location'];
+} elseif (!empty($job['property'])) {
+    $mapQuery = $job['property'];
+}
+$hasMapLink = $mapQuery !== '';
+$mapUrl = $hasMapLink ? 'https://www.google.com/maps?q=' . urlencode($mapQuery) : '';
+
 $isComplete = strtolower($job['status'] ?? '') === 'completed';
 
 // --- AJAX Response Part ---
@@ -118,9 +131,9 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1'): ?>
                 </div>
             </div>
             <div class="mt-8 grid grid-cols-2 gap-3 no-print">
-                <?php if(!empty($job['location'])): ?>
-                <a href="https://www.google.com/maps/dir/?api=1&destination=<?php echo urlencode($job['location']); ?>" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center gap-2 py-4 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-700 dark:text-gray-300 hover:bg-gray-50 transition-all shadow-sm">
-                    <i class="fas fa-directions text-indigo-500"></i> Directions
+                <?php if($hasMapLink): ?>
+                <a href="<?php echo htmlspecialchars($mapUrl); ?>" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center gap-2 py-4 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-700 dark:text-gray-300 hover:bg-gray-50 transition-all shadow-sm">
+                    <i class="fas fa-map-marker-alt text-indigo-500"></i> View on Maps
                 </a>
                 <?php endif; ?>
                 <div class="flex items-center justify-center py-4 bg-gray-50 dark:bg-slate-800/50 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-400 italic">
@@ -204,9 +217,9 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1'): ?>
                 </div>
             </div>
             <div class="mt-8 grid grid-cols-2 gap-3 no-print">
-                <?php if(!empty($job['location'])): ?>
-                <a href="https://www.google.com/maps/dir/?api=1&destination=<?php echo urlencode($job['location']); ?>" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center gap-2 py-4 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-700 dark:text-gray-300 hover:bg-gray-50 transition-all shadow-sm">
-                    <i class="fas fa-directions text-indigo-500"></i> Directions
+                <?php if($hasMapLink): ?>
+                <a href="<?php echo htmlspecialchars($mapUrl); ?>" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center gap-2 py-4 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-700 dark:text-gray-300 hover:bg-gray-50 transition-all shadow-sm">
+                    <i class="fas fa-map-marker-alt text-indigo-500"></i> View on Maps
                 </a>
                 <?php endif; ?>
                 <div class="flex items-center justify-center py-4 bg-gray-50 dark:bg-slate-800/50 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-400 italic">

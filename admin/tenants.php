@@ -7,14 +7,19 @@ if (!isTrackerAuthenticated()) {
     exit();
 }
 
-$superAdminEmail = trackerSuperAdminEmail();
-if (($_SESSION['email'] ?? '') !== $superAdminEmail) {
+if (!isTrackerSuperAdmin()) {
     header('Location: ../index.php');
     exit();
 }
 
 include '../header.php';
 include '../nav.php';
+
+$tenantImpersonationActive = !empty($_SESSION['impersonation_active']);
+$tenantImpersonationName = trim((string) ($_SESSION['impersonated_tenant_name'] ?? ''));
+$tenantImpersonationSlug = trim((string) ($_SESSION['impersonated_tenant_slug'] ?? ($_SESSION['tenant_slug'] ?? '')));
+$impersonatedUserName = trim((string) ($_SESSION['impersonated_user_name'] ?? ''));
+$impersonatedUserEmail = trim((string) ($_SESSION['impersonated_user_email'] ?? ''));
 ?>
 
 <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -24,11 +29,46 @@ include '../nav.php';
             <p class="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-widest mt-1">Create tenants, move users and categories, and review tenant distribution.</p>
         </div>
         <div class="flex gap-3">
+            <a href="tenant_feature_diagnostic.php" class="bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-slate-700 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-50 dark:hover:bg-slate-800 transition-all active:scale-95 shadow-xl flex items-center gap-2">
+                <i class="fas fa-stethoscope"></i> Feature Diagnostic
+            </a>
             <a href="index.php" class="bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-slate-700 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 dark:hover:bg-slate-800 transition-all active:scale-95 shadow-xl flex items-center gap-2">
                 <i class="fas fa-cog"></i> Admin Home
             </a>
         </div>
     </div>
+
+    <section class="card-base border-none">
+        <div class="p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <div class="text-[10px] font-black uppercase tracking-widest text-indigo-500">Tenant Login Context</div>
+                <?php if ($tenantImpersonationActive): ?>
+                    <div class="mt-2 text-lg font-black text-gray-900 dark:text-white">
+                        Impersonating <?php echo htmlspecialchars($impersonatedUserName !== '' ? $impersonatedUserName : $impersonatedUserEmail, ENT_QUOTES, 'UTF-8'); ?>
+                    </div>
+                    <div class="mt-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                        <?php echo htmlspecialchars($tenantImpersonationName !== '' ? $tenantImpersonationName : $tenantImpersonationSlug, ENT_QUOTES, 'UTF-8'); ?>
+                        <?php if ($tenantImpersonationSlug !== ''): ?> • <?php echo htmlspecialchars($tenantImpersonationSlug, ENT_QUOTES, 'UTF-8'); ?><?php endif; ?>
+                        <?php if ($impersonatedUserEmail !== ''): ?> • <?php echo htmlspecialchars($impersonatedUserEmail, ENT_QUOTES, 'UTF-8'); ?><?php endif; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="mt-2 text-sm font-bold text-gray-700 dark:text-slate-200">
+                        No impersonation is active. Use a tenant row below to pick a user and log in as them.
+                    </div>
+                <?php endif; ?>
+            </div>
+            <div class="flex gap-3">
+                <a href="../index.php" class="px-5 py-3 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl active:scale-95 flex items-center gap-2">
+                    <i class="fas fa-external-link-alt"></i> Open Tracker
+                </a>
+                <?php if ($tenantImpersonationActive): ?>
+                    <button type="button" id="restoreTenantContextBtn" class="px-5 py-3 bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-slate-700 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-50 dark:hover:bg-slate-800 transition-all active:scale-95 shadow-xl flex items-center gap-2">
+                        <i class="fas fa-undo"></i> Stop Impersonating
+                    </button>
+                <?php endif; ?>
+            </div>
+        </div>
+    </section>
 
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
         <section class="card-base border-none xl:col-span-1">
@@ -192,6 +232,7 @@ const featureToggleMapping = [
 
 let tenantRows = [];
 let tenantLookups = { users: [], categories: [] };
+const reportTenantStorageKey = 'tracker_admin_report_tenant_id';
 
 function escapeHtml(value) {
     return String(value ?? '')
@@ -206,6 +247,28 @@ function swalConfig() {
     return typeof getSwalConfig === 'function' ? getSwalConfig() : {};
 }
 
+function getPersistedReportTenantId() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('tenant_report_id') || sessionStorage.getItem(reportTenantStorageKey) || '';
+}
+
+function persistReportTenantId(tenantId) {
+    const normalized = String(tenantId || '').trim();
+    if (normalized) {
+        sessionStorage.setItem(reportTenantStorageKey, normalized);
+    } else {
+        sessionStorage.removeItem(reportTenantStorageKey);
+    }
+
+    const url = new URL(window.location.href);
+    if (normalized) {
+        url.searchParams.set('tenant_report_id', normalized);
+    } else {
+        url.searchParams.delete('tenant_report_id');
+    }
+    window.history.replaceState({}, '', url.toString());
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('tenantResetBtn').addEventListener('click', resetTenantForm);
     document.getElementById('tenantForm').addEventListener('submit', saveTenant);
@@ -215,10 +278,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('loadReportBtn').addEventListener('click', loadTenantReport);
     document.getElementById('syncTenantBtn').addEventListener('click', syncTenantData);
     document.getElementById('saveFeatureToggles')?.addEventListener('click', saveFeatureToggles);
+    document.getElementById('restoreTenantContextBtn')?.addEventListener('click', restoreTenantContext);
     document.getElementById('reportTenantId')?.addEventListener('change', (event) => {
-        loadFeatureSettings(event.target.value);
+        loadTenantReport(event.target.value);
     });
     await Promise.all([loadTenants(), loadLookups()]);
+    const persistedTenantId = getPersistedReportTenantId();
+    if (persistedTenantId) {
+        const reportSelect = document.getElementById('reportTenantId');
+        if (reportSelect) {
+            reportSelect.value = persistedTenantId;
+        }
+        await loadTenantReport(persistedTenantId);
+    }
 });
 
 async function apiJson(url, options = {}) {
@@ -228,6 +300,88 @@ async function apiJson(url, options = {}) {
         throw new Error(data.message || 'Request failed.');
     }
     return data;
+}
+
+async function openTenantImpersonation(tenantId, tenantSlug, tenantName) {
+    const tenantUsers = (tenantLookups.users || []).filter((user) => String(user.tenant_id || '') === String(tenantId));
+    if (!tenantUsers.length) {
+        Swal.fire({ ...swalConfig(), icon: 'warning', title: 'No Users', text: 'This tenant has no users available for impersonation.' });
+        return;
+    }
+
+    tenantUsers.sort((a, b) => {
+        const officeDelta = Number(!!b.is_office) - Number(!!a.is_office);
+        if (officeDelta !== 0) {
+            return officeDelta;
+        }
+        return String(a.name || '').localeCompare(String(b.name || ''));
+    });
+
+    const options = tenantUsers.reduce((map, user) => {
+        const flags = [];
+        if (user.is_office) flags.push('Office');
+        if (user.is_member) flags.push('Worker');
+        if (user.is_driver) flags.push('Driver');
+        if (user.is_callout_driver) flags.push('Callout');
+        if (user.is_subcontractor) flags.push('Sub');
+        map[user.id] = `${user.name} (${user.email || 'no email'})${flags.length ? ' • ' + flags.join(', ') : ''}`;
+        return map;
+    }, {});
+
+    const defaultUserId = tenantUsers.find((user) => user.is_office)?.id || tenantUsers[0].id;
+    const result = await Swal.fire({
+        ...swalConfig(),
+        title: `Login As ${tenantName}`,
+        input: 'select',
+        inputOptions: options,
+        inputValue: String(defaultUserId),
+        inputPlaceholder: 'Select a user',
+        showCancelButton: true,
+        confirmButtonText: 'Impersonate User',
+        inputValidator: (value) => value ? null : 'Select a user to continue.'
+    });
+
+    if (!result.isConfirmed) {
+        return;
+    }
+
+    const selectedUser = tenantUsers.find((user) => String(user.id) === String(result.value));
+    if (!selectedUser) {
+        Swal.fire({ ...swalConfig(), icon: 'error', title: 'Invalid User', text: 'The selected user could not be found.' });
+        return;
+    }
+
+    try {
+        const result = await apiJson('tenant_login.php', {
+            method: 'POST',
+            headers: tenantJsonHeaders(),
+            body: JSON.stringify({
+                action: 'impersonate',
+                tenant_id: Number(tenantId),
+                tenant_slug: tenantSlug,
+                tenant_name: tenantName,
+                user_id: Number(selectedUser.id)
+            })
+        });
+        await Swal.fire({ ...swalConfig(), icon: 'success', title: 'Impersonation Started', text: result.message });
+        window.location.href = result.redirect || '../index.php';
+    } catch (error) {
+        Swal.fire({ ...swalConfig(), icon: 'error', title: 'Impersonation Failed', text: error.message });
+    }
+}
+
+async function restoreTenantContext() {
+    try {
+        const result = await apiJson('tenant_login.php', {
+            method: 'POST',
+            headers: tenantJsonHeaders(),
+            body: JSON.stringify({ action: 'restore' })
+        });
+        await Swal.fire({ ...swalConfig(), icon: 'success', title: 'Tenant Context Restored', text: result.message });
+        window.location.href = result.redirect || '../index.php';
+    } catch (error) {
+        Swal.fire({ ...swalConfig(), icon: 'error', title: 'Restore Failed', text: error.message });
+    }
 }
 
 async function loadTenants() {
@@ -271,6 +425,7 @@ function renderTenants() {
             <td class="px-6 py-4 text-center font-black text-gray-700 dark:text-slate-200">${tenant.leads_count}</td>
             <td class="px-6 py-4 text-right">
                 <div class="flex justify-end gap-2">
+                    <button type="button" onclick="openTenantImpersonation(${tenant.id}, '${escapeHtml(tenant.slug)}', '${escapeHtml(tenant.name)}')" class="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 font-black uppercase text-[9px] tracking-widest rounded-lg hover:bg-emerald-600 hover:text-white transition-all">Login</button>
                     <button type="button" onclick="editTenant(${tenant.id})" class="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-black uppercase text-[9px] tracking-widest rounded-lg hover:bg-indigo-600 hover:text-white transition-all">Edit</button>
                     <button type="button" onclick="loadTenantReport(${tenant.id})" class="px-3 py-1.5 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200 font-black uppercase text-[9px] tracking-widest rounded-lg hover:bg-gray-900 hover:text-white transition-all">Report</button>
                 </div>
@@ -280,11 +435,19 @@ function renderTenants() {
 }
 
 function populateTenantSelects() {
+    const currentValues = {
+        assignTenantId: document.getElementById('assignTenantId')?.value || '',
+        moveTenantId: document.getElementById('moveTenantId')?.value || '',
+        reportTenantId: document.getElementById('reportTenantId')?.value || ''
+    };
     const options = tenantRows.map((tenant) => `<option value="${tenant.id}">${escapeHtml(tenant.name)} (${escapeHtml(tenant.slug)})</option>`).join('');
     ['assignTenantId', 'moveTenantId', 'reportTenantId'].forEach((id) => {
         const select = document.getElementById(id);
         if (select) {
             select.innerHTML = options;
+            if (currentValues[id] && tenantRows.some((tenant) => String(tenant.id) === String(currentValues[id]))) {
+                select.value = currentValues[id];
+            }
         }
     });
 }
@@ -411,12 +574,15 @@ async function syncTenantData() {
 async function loadTenantReport(explicitTenantId = null) {
     const tenantId = explicitTenantId || document.getElementById('reportTenantId').value;
     if (!tenantId) {
+        persistReportTenantId('');
         return;
     }
 
     document.getElementById('reportTenantId').value = tenantId;
+    persistReportTenantId(tenantId);
 
     try {
+        await loadFeatureSettings(tenantId);
         const result = await apiJson(`${window.laravelApiUrl}/api/tenants/${tenantId}/report`, {
             headers: tenantHeaders()
         });
@@ -508,8 +674,15 @@ async function saveFeatureToggles() {
             headers: tenantJsonHeaders(),
             body: JSON.stringify(getFeaturePayload())
         });
-        Swal.fire({ ...swalConfig(), icon: 'success', title: 'Saved', text: result.message || 'Features updated.' });
+        persistReportTenantId(tenantId);
         await loadFeatureSettings(tenantId);
+        await Swal.fire({
+            ...swalConfig(),
+            icon: 'success',
+            title: 'Saved',
+            text: (result.message || 'Features updated.') + ' Reloading to refresh the navigation.'
+        });
+        window.location.reload();
     } catch (error) {
         Swal.fire({ ...swalConfig(), icon: 'error', title: 'Save Failed', text: error.message });
     }

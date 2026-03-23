@@ -9,6 +9,15 @@ if (!isTrackerAuthenticated()) {
     exit();
 }
 
+// FEATURE GATE: Redirect if module is disabled
+if (!featureEnabled('module_tool_inventory_enabled')) {
+    header('Location: ../index.php?error=feature_disabled');
+    exit();
+}
+
+include '../header.php';
+include '../nav.php';
+
 // Fetch initial lookup data
 $vRes = makeApiCall('/api/fuel/vehicles');
 $lookupRes = makeApiCall('/api/tools/lookups');
@@ -16,9 +25,6 @@ $lookupRes = makeApiCall('/api/tools/lookups');
 $vehicles = ($vRes && ($vRes['success'] ?? false)) ? $vRes['vehicles'] : [];
 $toolTypes = ($lookupRes && ($lookupRes['success'] ?? false)) ? $lookupRes['types'] : [];
 $toolTrades = ($lookupRes && ($lookupRes['success'] ?? false)) ? $lookupRes['trades'] : [];
-
-include '../header.php';
-include '../nav.php';
 ?>
 
 <!-- Lightbox CSS/JS -->

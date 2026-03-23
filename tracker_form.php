@@ -70,37 +70,43 @@ $subcontractors = ($subcontractorsResponse && ($subcontractorsResponse['success'
 $priorityOptions = ['Low', 'Medium', 'High', 'Urgent', 'Emergency'];
 $statusOptions = ['Open', 'Pending', 'In Progress', 'On Hold', 'Completed', 'Closed', 'Cancelled'];
 $yesNoOptions = ['Yes', 'No', 'Not Required'];
+$isEmbedded = isset($_GET['embedded']) && $_GET['embedded'] === '1';
 
 $pageTitle = $wo ? "Edit Order #" . ($id ?? '') : "Create New Work Order";
 
 include_once "header.php";
-include_once "nav.php";
+if (!$isEmbedded) {
+    include_once "nav.php";
+}
 ?>
 
-<div class="max-w-4xl mx-auto px-4 py-8">
+<div class="<?php echo $isEmbedded ? 'px-4 py-4 md:px-6 md:py-6' : 'max-w-4xl mx-auto px-4 py-8'; ?>">
     
     <!-- Header -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-        <div>
-            <h1 class="heading-brand">
-                <i class="fas <?php echo $id ? 'fa-edit' : 'fa-plus-circle'; ?> text-indigo-600 dark:text-indigo-400 mr-2"></i> <?php echo $pageTitle; ?>
-            </h1>
-            <p class="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">Manage core work order parameters and files</p>
+    <?php 
+        $backUrl = "index.php";
+        if ($wo && !empty($wo['clientId'])) $backUrl .= "?client_filter=" . $wo['clientId'];
+    ?>
+    <?php if (!$isEmbedded): ?>
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+            <div>
+                <h1 class="heading-brand">
+                    <i class="fas <?php echo $id ? 'fa-edit' : 'fa-plus-circle'; ?> text-indigo-600 dark:text-indigo-400 mr-2"></i> <?php echo $pageTitle; ?>
+                </h1>
+                <p class="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">Manage core work order parameters and files</p>
+            </div>
+            <a href="<?php echo $backUrl; ?>" class="btn-secondary py-2 px-4 shadow-none">
+                <i class="fas fa-arrow-left"></i> Back to Table
+            </a>
         </div>
-        <?php 
-            $backUrl = "index.php";
-            if ($wo && !empty($wo['clientId'])) $backUrl .= "?client_filter=" . $wo['clientId'];
-        ?>
-        <a href="<?php echo $backUrl; ?>" class="btn-secondary py-2 px-4 shadow-none">
-            <i class="fas fa-arrow-left"></i> Back to Table
-        </a>
-    </div>
+    <?php endif; ?>
 
     <!-- Form Section -->
     <div class="card-base">
         <form action="tracker_handler.php" method="POST" enctype="multipart/form-data">
             <input type="hidden" name="action" value="<?php echo $id ? 'save_edit' : 'create'; ?>">
             <?php if ($id): ?><input type="hidden" name="id" value="<?php echo $id; ?>"><?php endif; ?>
+            <input type="hidden" name="lat_lng" id="latLngInput" value="<?php echo htmlspecialchars($wo['lat_lng'] ?? ''); ?>">
 
             <div class="p-8 space-y-8">
                 <!-- Group 1: PO & Priority -->

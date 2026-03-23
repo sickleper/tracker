@@ -4,77 +4,108 @@ require_once '../tracker_data.php';
 
 header('Content-Type: application/json');
 
+if (!isTrackerAuthenticated()) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'message' => 'Authentication required.']);
+    exit();
+}
+
+if (!function_exists('isTrackerAdminUser') || !isTrackerAdminUser()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Admin access required.']);
+    exit();
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
+    $requestedTenantSlug = trim((string) ($_POST['tenant_slug'] ?? ''));
+
+    if ($requestedTenantSlug !== '') {
+        $_POST['tenant_slug'] = $requestedTenantSlug;
+        $_GET['tenant_slug'] = $requestedTenantSlug;
+        $_SERVER['TENANT_SLUG'] = $requestedTenantSlug;
+    }
+
+    $resolvedTenantSlug = trackerTenantSlug();
+
+    $respond = static function (bool $success, string $message, int $statusCode = 200) use ($resolvedTenantSlug): void {
+        http_response_code($statusCode);
+        echo json_encode([
+            'success' => $success,
+            'message' => $message,
+            'tenant_slug' => $resolvedTenantSlug,
+        ]);
+    };
 
     switch ($action) {
         case 'clear_cache':
             $response = makeApiCall('/api/maintenance/clear-cache', [], 'POST');
             if ($response && ($response['success'] ?? false)) {
-                echo json_encode(['success' => true, 'message' => 'Application cache cleared.']);
+                $respond(true, 'Application cache cleared.');
             } else {
-                echo json_encode(['success' => false, 'message' => $response['message'] ?? 'Failed to clear cache.']);
+                $respond(false, $response['message'] ?? 'Failed to clear cache.', 422);
             }
             break;
 
         case 'clear_logs':
             $response = makeApiCall('/api/maintenance/clear-logs', [], 'POST');
             if ($response && ($response['success'] ?? false)) {
-                echo json_encode(['success' => true, 'message' => 'Application logs cleared.']);
+                $respond(true, 'Application logs cleared.');
             } else {
-                echo json_encode(['success' => false, 'message' => $response['message'] ?? 'Failed to clear logs.']);
+                $respond(false, $response['message'] ?? 'Failed to clear logs.', 422);
             }
             break;
 
         case 'clear_sessions':
             $response = makeApiCall('/api/maintenance/clear-sessions', [], 'POST');
             if ($response && ($response['success'] ?? false)) {
-                echo json_encode(['success' => true, 'message' => $response['message']]);
+                $respond(true, (string) ($response['message'] ?? 'Expired sessions cleared.'));
             } else {
-                echo json_encode(['success' => false, 'message' => $response['message'] ?? 'Failed to clear sessions.']);
+                $respond(false, $response['message'] ?? 'Failed to clear sessions.', 422);
             }
             break;
 
         case 'clear_route_cache':
             $response = makeApiCall('/api/maintenance/clear-route-cache', [], 'POST');
             if ($response && ($response['success'] ?? false)) {
-                echo json_encode(['success' => true, 'message' => 'Route cache cleared.']);
+                $respond(true, 'Route cache cleared.');
             } else {
-                echo json_encode(['success' => false, 'message' => $response['message'] ?? 'Failed to clear route cache.']);
+                $respond(false, $response['message'] ?? 'Failed to clear route cache.', 422);
             }
             break;
 
         case 'clear_config_cache':
             $response = makeApiCall('/api/maintenance/clear-config-cache', [], 'POST');
             if ($response && ($response['success'] ?? false)) {
-                echo json_encode(['success' => true, 'message' => 'Config cache cleared.']);
+                $respond(true, 'Config cache cleared.');
             } else {
-                echo json_encode(['success' => false, 'message' => $response['message'] ?? 'Failed to clear config cache.']);
+                $respond(false, $response['message'] ?? 'Failed to clear config cache.', 422);
             }
             break;
 
         case 'optimize_clear':
             $response = makeApiCall('/api/maintenance/optimize-clear', [], 'POST');
             if ($response && ($response['success'] ?? false)) {
-                echo json_encode(['success' => true, 'message' => 'All compiled files cleared.']);
+                $respond(true, 'All compiled files cleared.');
             } else {
-                echo json_encode(['success' => false, 'message' => $response['message'] ?? 'Failed to clear all compiled files.']);
+                $respond(false, $response['message'] ?? 'Failed to clear all compiled files.', 422);
             }
             break;
 
         case 'seed_milestones':
             $response = makeApiCall('/api/projects/seed-milestone-templates', [], 'POST');
             if ($response && ($response['success'] ?? false)) {
-                echo json_encode(['success' => true, 'message' => 'Milestone templates generated for project categories.']);
+                $respond(true, 'Milestone templates generated for project categories.');
             } else {
-                echo json_encode(['success' => false, 'message' => $response['message'] ?? 'Failed to seed milestone templates.']);
+                $respond(false, $response['message'] ?? 'Failed to seed milestone templates.', 422);
             }
             break;
 
         default:
-            echo json_encode(['success' => false, 'message' => 'Unknown action.']);
+            $respond(false, 'Unknown action.', 400);
             break;
     }
 } else {
+    http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Invalid request.']);
 }

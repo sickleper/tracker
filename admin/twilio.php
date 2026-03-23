@@ -7,8 +7,7 @@ if (!isTrackerAuthenticated()) {
     exit();
 }
 
-$superAdminEmail = trackerSuperAdminEmail();
-if (($_SESSION['email'] ?? '') !== $superAdminEmail) {
+if (!isTrackerSuperAdmin()) {
     header('Location: ../index.php');
     exit();
 }

@@ -7,7 +7,10 @@ if (!isTrackerAuthenticated()) {
     exit();
 }
 
-if (!isTrackerSuperAdmin()) {
+$isSuperAdmin = isTrackerSuperAdmin();
+$isAdminUser = isTrackerAdminUser();
+
+if (!$isAdminUser) {
     header('Location: ../index.php');
     exit();
 }
@@ -37,7 +40,7 @@ include '../nav.php';
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
             <h1 class="heading-brand">System Maintenance</h1>
-            <p class="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-widest mt-1">Version control and synchronized updates across all instances.</p>
+            <p class="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-widest mt-1"><?php echo $isSuperAdmin ? 'Version control and synchronized updates across all instances.' : 'Update this site from GitHub using the office-safe update flow.'; ?></p>
         </div>
         <div class="flex gap-3">
             <a href="index.php" class="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95 shadow-xl flex items-center gap-2">
@@ -47,7 +50,7 @@ include '../nav.php';
     </div>
 
     <!-- Status Overview -->
-    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-12">
+    <div class="grid grid-cols-1 <?php echo $isSuperAdmin ? 'lg:grid-cols-4' : 'lg:grid-cols-3'; ?> gap-6 mb-12">
         <div class="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm">
             <div class="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Current Branch</div>
             <div class="mt-3 text-2xl font-black text-slate-900 dark:text-white"><?php echo htmlspecialchars($currentBranch ?: 'unknown'); ?></div>
@@ -68,6 +71,7 @@ include '../nav.php';
             </button>
         </div>
 
+        <?php if ($isSuperAdmin): ?>
         <div class="rounded-3xl border <?php echo $workingTreeDirty ? 'border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-950/20' : 'border-emerald-200 dark:border-emerald-900/40 bg-emerald-50 dark:bg-emerald-950/20'; ?> p-6 shadow-sm">
             <div class="text-[10px] font-black uppercase tracking-[0.25em] <?php echo $workingTreeDirty ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-300'; ?>">Local Changes</div>
             <div class="mt-3 text-2xl font-black <?php echo $workingTreeDirty ? 'text-amber-900 dark:text-amber-100' : 'text-emerald-900 dark:text-emerald-100'; ?>"><?php echo $workingTreeDirty ? 'Modified' : 'Clean'; ?></div>
@@ -75,11 +79,21 @@ include '../nav.php';
                 <?php echo $workingTreeDirty ? 'You have unsaved edits on this site.' : 'No local edits detected.'; ?>
             </div>
         </div>
+        <?php else: ?>
+        <div class="rounded-3xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50 dark:bg-emerald-950/20 p-6 shadow-sm">
+            <div class="text-[10px] font-black uppercase tracking-[0.25em] text-emerald-600 dark:text-emerald-300">Office Access</div>
+            <div class="mt-3 text-2xl font-black text-emerald-900 dark:text-emerald-100">Update Only</div>
+            <div class="mt-2 text-xs text-emerald-700 dark:text-emerald-300">
+                Office users can check GitHub and pull the latest version, but cannot commit or push code.
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
 
     <!-- 3-Step Workflow: Horizontal Columns on Large Screens -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+    <div class="grid grid-cols-1 <?php echo $isSuperAdmin ? 'lg:grid-cols-3' : 'lg:grid-cols-1'; ?> gap-8 mb-12">
         
+        <?php if ($isSuperAdmin): ?>
         <!-- STEP 1: SAVE (COMMIT) -->
         <div class="card-base relative flex flex-col <?php echo $workingTreeDirty ? 'ring-4 ring-amber-500/30' : 'opacity-70'; ?>">
             <div class="absolute -top-4 -left-4 w-10 h-10 rounded-full bg-amber-500 text-white flex items-center justify-center font-black shadow-lg z-10">1</div>
@@ -126,10 +140,11 @@ include '../nav.php';
                 </button>
             </div>
         </div>
+        <?php endif; ?>
 
         <!-- STEP 3: UPDATE (PULL) -->
         <div id="step3Card" class="card-base relative flex flex-col border-indigo-100 dark:border-indigo-900/50">
-            <div class="absolute -top-4 -left-4 w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-black shadow-lg z-10">3</div>
+            <div class="absolute -top-4 -left-4 w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-black shadow-lg z-10"><?php echo $isSuperAdmin ? '3' : '1'; ?></div>
             <div class="section-header">
                 <h3>Update This Site</h3>
                 <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400">Download latest from GitHub</p>

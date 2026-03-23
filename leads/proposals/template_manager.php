@@ -7,9 +7,7 @@ if (!isTrackerAuthenticated()) {
     exit();
 }
 
-// RESTRICT: Only system administrators can access template manager
-$superAdminEmail = trackerSuperAdminEmail();
-if (($_SESSION['email'] ?? '') !== $superAdminEmail) {
+if (!isTrackerSuperAdmin()) {
     header('Location: ../../admin/index.php');
     exit();
 }

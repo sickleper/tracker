@@ -7,8 +7,15 @@ if (!isTrackerAuthenticated()) {
     exit();
 }
 
+// FEATURE GATE: Redirect if module is disabled
+if (!featureEnabled('module_holidays_enabled')) {
+    header('Location: ../index.php?error=feature_disabled');
+    exit();
+}
+
 $pageTitle = "Holiday & Leave Management";
 include "../header.php";
+include "../nav.php";
 
 $isAdmin = isTrackerAdminUser();
 $user_id = (int) ($_SESSION['user_id'] ?? 0);
@@ -88,11 +95,10 @@ $summaryData = ($summaryRes && ($summaryRes['success'] ?? false)) ? $summaryRes[
     #summary-panel.collapsed .summary-panel-body { display: none; }
     #summary-panel.collapsed .summary-toggle-icon { transform: rotate(-90deg); }
     .summary-scroll { max-height: 320px; overflow-y: auto; }
-</style>
+ </style>
 
-<!-- Admin Debug: Email: <?php echo $_SESSION['email'] ?? 'N/A'; ?>, SuperAdmin: <?php echo $superAdminEmail; ?>, Role: <?php echo $role_id ?? 'N/A'; ?>, Office: <?php echo $isOffice ? 'Yes' : 'No'; ?>, isAdmin: <?php echo $isAdmin ? 'Yes' : 'No'; ?>, CanBookForOthers: <?php echo $canBookForOthers ? 'Yes' : 'No'; ?> -->
+ <!-- Admin Debug: Email: <?php echo $_SESSION['email'] ?? 'N/A'; ?>, SuperAdmin: <?php echo $superAdminEmail; ?>, Role: <?php echo $role_id ?? 'N/A'; ?>, Office: <?php echo $isOffice ? 'Yes' : 'No'; ?>, isAdmin: <?php echo $isAdmin ? 'Yes' : 'No'; ?>, CanBookForOthers: <?php echo $canBookForOthers ? 'Yes' : 'No'; ?> -->
 <body class="bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-gray-100 font-sans">
-<?php include "../nav.php"; ?>
 
 <div class="max-w-full mx-auto px-4 md:px-8 py-8 mt-4">
     <!-- Header Section -->

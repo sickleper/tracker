@@ -119,6 +119,9 @@ if (!function_exists('loadGlobalSettings')) {
                             case 'tracker_notify_names': $GLOBALS['tracker_notify_names'] = $val; break;
                             case 'tracker_client_names': $GLOBALS['tracker_client_names'] = $val; break;
                             case 'tracker_sub_names': $GLOBALS['tracker_sub_names'] = $val; break;
+                            case 'whatsapp_join_number': $GLOBALS['whatsapp_join_number'] = $val; break;
+                            case 'whatsapp_admin_number': $GLOBALS['whatsapp_admin_number'] = $val; break;
+                            case 'whatsapp_admin_alerts_enabled': $GLOBALS['whatsapp_admin_alerts_enabled'] = $val; break;
                             case 'super_admin_email': $GLOBALS['super_admin_email'] = $val; break;
                             case 'mail_host': $GLOBALS['mail_host'] = $val; break;
                             case 'mail_username': $GLOBALS['mail_username'] = $val; break;
@@ -134,8 +137,22 @@ if (!function_exists('loadGlobalSettings')) {
                     }
                 }
             }
-            $GLOBALS['settings_loaded'] = true;
         }
+
+        $tenantId = (int) ($_SESSION['tenant_id'] ?? 0);
+        if ($tenantId > 0) {
+            $featureRes = makeApiCall('/api/tenants/' . $tenantId . '/feature-settings');
+            if ($featureRes && ($featureRes['success'] ?? false) && is_array($featureRes['data'] ?? null)) {
+                foreach ($featureRes['data'] as $key => $val) {
+                    if (!is_string($key) || $key === '') {
+                        continue;
+                    }
+                    $GLOBALS[$key] = $val;
+                }
+            }
+        }
+
+        $GLOBALS['settings_loaded'] = true;
     }
 }
 
@@ -151,11 +168,6 @@ if (!function_exists('isTrackerSuperAdmin')) {
         // 1. Check SuperAdmin Email Match
         $superAdminEmail = trackerSuperAdminEmail();
         if ($superAdminEmail !== '' && ($_SESSION['email'] ?? '') === $superAdminEmail) {
-            return true;
-        }
-
-        // 2. Check Role ID (1 is usually Admin/SuperAdmin)
-        if (isset($_SESSION['role_id']) && (int)$_SESSION['role_id'] === 1) {
             return true;
         }
 
@@ -177,24 +189,16 @@ if (!function_exists('isTrackerAdminUser')) {
             return true;
         }
 
-        if (isset($_SESSION['role_id']) && (int) $_SESSION['role_id'] === 1) {
-            return true;
-        }
-
         if (!empty($_SESSION['is_office'])) {
             return true;
         }
 
         $currentUserRes = makeApiCall('/api/user');
         if (is_array($currentUserRes)) {
-            $roleId = (int) ($currentUserRes['data']['role_id'] ?? $currentUserRes['role_id'] ?? 0);
             $isOffice = (bool) ($currentUserRes['data']['is_office'] ?? $currentUserRes['is_office'] ?? false);
-            if ($roleId > 0) {
-                $_SESSION['role_id'] = $roleId;
-            }
             $_SESSION['is_office'] = $isOffice;
 
-            return $roleId === 1 || $isOffice;
+            return $isOffice;
         }
 
         return false;

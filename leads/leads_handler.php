@@ -25,6 +25,99 @@ if (!$action) {
     exit;
 }
 
+function canAccessTrackerSettings(): bool {
+    return function_exists('isTrackerAdminUser') && isTrackerAdminUser();
+}
+
+function trackerOfficeAllowedSettingsMap(): array {
+    return [
+        'users' => null,
+        'Business Rules' => null,
+        'localization' => null,
+        'fleet' => null,
+        'finances' => null,
+        'general' => null,
+        'apis' => [
+            'workorder_extraction_email',
+            'gmail_workorder_lookback_days',
+            'booking_service_radius_km',
+            'booking_recommended_max_marginal_cost',
+            'booking_near_base_max_distance_km',
+        ],
+        'twilio' => [
+            'whatsapp_join_number',
+        ],
+    ];
+}
+
+function trackerAllowedOfficeSettingKeys(): array {
+    static $allowedKeys = null;
+
+    if (is_array($allowedKeys)) {
+        return $allowedKeys;
+    }
+
+    $allowedKeys = [];
+    foreach (trackerOfficeAllowedSettingsMap() as $group => $keys) {
+        if (is_array($keys)) {
+            foreach ($keys as $key) {
+                $allowedKeys[$key] = true;
+            }
+        }
+    }
+
+    return $allowedKeys;
+}
+
+function filterTrackerSettingsForCurrentUser(array $settings): array {
+    if (function_exists('isTrackerSuperAdmin') && isTrackerSuperAdmin()) {
+        return $settings;
+    }
+
+    $allowedMap = trackerOfficeAllowedSettingsMap();
+    $filtered = [];
+
+    foreach ($settings as $group => $items) {
+        if (!array_key_exists($group, $allowedMap) || !is_array($items)) {
+            continue;
+        }
+
+        $allowedKeys = $allowedMap[$group];
+        if ($allowedKeys === null) {
+            $filtered[$group] = $items;
+            continue;
+        }
+
+        $filteredItems = array_values(array_filter($items, static function ($item) use ($allowedKeys) {
+            $key = $item['key'] ?? null;
+            return is_string($key) && in_array($key, $allowedKeys, true);
+        }));
+
+        if ($filteredItems !== []) {
+            $filtered[$group] = $filteredItems;
+        }
+    }
+
+    return $filtered;
+}
+
+function filterTrackerSettingsPayloadForCurrentUser(array $data): array {
+    if (function_exists('isTrackerSuperAdmin') && isTrackerSuperAdmin()) {
+        return $data;
+    }
+
+    $allowedKeys = trackerAllowedOfficeSettingKeys();
+    $filtered = [];
+
+    foreach ($data as $key => $value) {
+        if (isset($allowedKeys[$key])) {
+            $filtered[$key] = $value;
+        }
+    }
+
+    return $filtered;
+}
+
 function requireLeadHandlerId($value, string $label = 'ID'): ?int {
     $validated = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
     if ($validated === false || $validated === null) {
@@ -205,14 +298,38 @@ try {
             break;
 
         case 'get_global_settings':
+            if (!canAccessTrackerSettings()) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Admin access required']);
+                break;
+            }
             $response = makeApiCall('/api/settings');
+            if (is_array($response) && ($response['success'] ?? false) && is_array($response['data'] ?? null)) {
+                $response['data'] = filterTrackerSettingsForCurrentUser($response['data']);
+            }
             echo json_encode($response);
             break;
 
         case 'update_global_settings':
+            if (!canAccessTrackerSettings()) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Admin access required']);
+                break;
+            }
             $data = $_POST;
             unset($data['action']);
-            $response = makeApiCall('/api/settings/bulk', ['settings' => $data], 'POST');
+            $filteredData = filterTrackerSettingsPayloadForCurrentUser($data);
+            if ($filteredData === []) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'No permitted settings were provided']);
+                break;
+            }
+            if (!isTrackerSuperAdmin() && count($filteredData) !== count($data)) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'One or more settings are restricted to superadmin']);
+                break;
+            }
+            $response = makeApiCall('/api/settings/bulk', ['settings' => $filteredData], 'POST');
             echo json_encode($response);
             break;
 
