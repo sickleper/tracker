@@ -64,10 +64,11 @@
         }
 
         function openSummary(id) {
-            const isLead = (window.location.pathname.indexOf('/leads/') !== -1);
+            const isLead = window.location.pathname.indexOf('/leads/') !== -1;
             const typeParam = isLead ? '&type=lead' : '&type=task';
-            const baseUrl = window.appUrl || (isLead ? '../' : './');
-            const ajaxUrl = baseUrl + 'job_summary.php?id=' + id + typeParam + '&ajax=1';
+            const trimmedAppUrl = (window.appUrl || '').replace(/\/$/, '');
+            const origin = trimmedAppUrl || window.location.origin || (window.location.protocol + '//' + window.location.host);
+            const ajaxUrl = `${origin}/job_summary.php?id=${id}${typeParam}&ajax=1`;
             
             const modal = document.getElementById('summary-modal');
             const content = document.getElementById('summary-content');

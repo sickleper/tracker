@@ -1,6 +1,16 @@
 const ProposalSubmissionModule = (function() {
     let isSaving = false;
 
+    function normalizeTaxes(value) {
+        if (Array.isArray(value)) {
+            return value.filter(Boolean).join(',');
+        }
+        if (value === null || value === undefined) {
+            return '';
+        }
+        return value;
+    }
+
     function saveProposal() {
         if (isSaving) {
             return;
@@ -25,13 +35,14 @@ const ProposalSubmissionModule = (function() {
         // serializeArray doesn't nest objects well, so we re-extract items
         const items = [];
         $('.proposal-item-row').each(function(index) {
+            const taxesInput = $(this).find('.item-taxes').val();
             items.push({
                 item_name: $(this).find('.item-name').val(),
                 quantity: $(this).find('.item-qty').val(),
                 unit_price: $(this).find('.item-price').val(),
                 amount: $(this).find('.item-total').val(),
                 item_summary: $(this).find('.item-summary').val(),
-                taxes: $(this).find('.item-taxes').val()
+                taxes: normalizeTaxes(taxesInput)
             });
         });
 

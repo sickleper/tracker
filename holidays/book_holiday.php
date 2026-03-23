@@ -21,6 +21,7 @@ $isAdmin = isTrackerAdminUser();
 $user_id = (int) ($_SESSION['user_id'] ?? 0);
 $role_id = (int) ($_SESSION['role_id'] ?? 0);
 $isOffice = !empty($_SESSION['is_office']);
+$superAdminEmail = trackerSuperAdminEmail();
 
 // Fetch users via API (team only)
 $users = [];

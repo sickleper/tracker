@@ -21,29 +21,29 @@ include '../header.php';
 include '../nav.php';
 ?>
 
-<div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div class="admin-shell">
     
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
             <h1 class="heading-brand">System Administration</h1>
             <p class="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-widest mt-1">Manage users, project categories, and global settings.</p>
         </div>
-        <div class="flex gap-3">
+        <div class="flex flex-wrap gap-3">
             <?php if ($isSuperAdmin): ?>
-            <a href="profile.php" class="bg-white dark:bg-slate-900 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-slate-700 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-sky-50 dark:hover:bg-slate-800 transition-all active:scale-95 shadow-xl flex items-center gap-2">
+            <a href="profile.php" class="admin-action admin-action-outline-sky">
                 <i class="fas fa-id-card"></i> Profile
             </a>
-            <a href="client_portals.php" class="bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-slate-700 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 dark:hover:bg-slate-800 transition-all active:scale-95 shadow-xl flex items-center gap-2">
+            <a href="client_portals.php" class="admin-action admin-action-outline-info">
                 <i class="fas fa-user-shield"></i> Client Portals
             </a>
-            <a href="tenants.php" class="bg-white dark:bg-slate-900 text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-slate-700 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-violet-50 dark:hover:bg-slate-800 transition-all active:scale-95 shadow-xl flex items-center gap-2">
+            <a href="tenants.php" class="admin-action admin-action-outline-violet">
                 <i class="fas fa-building"></i> Tenants
             </a>
-            <a href="deploy.php" class="bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-slate-700 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-50 dark:hover:bg-slate-800 transition-all active:scale-95 shadow-xl flex items-center gap-2">
+            <a href="deploy.php" class="admin-action admin-action-outline-success">
                 <i class="fas fa-rocket"></i> Deploy
             </a>
             <?php endif; ?>
-            <button id="mainAddBtn" onclick="openAddModal()" class="bg-gray-900 dark:bg-indigo-600 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-800 dark:hover:bg-indigo-700 transition-all active:scale-95 shadow-xl flex items-center gap-2">
+            <button id="mainAddBtn" onclick="openAddModal()" class="admin-action admin-action-dark">
                 <i class="fas fa-plus-circle text-emerald-400"></i> <span id="addBtnText">Add New Category</span>
             </button>
         </div>
@@ -75,13 +75,13 @@ include '../nav.php';
     <div id="tabContents">
         <!-- Tab: Categories -->
         <div id="tab-categories" class="admin-tab-pane space-y-8">
-            <div class="card-base border-none">
+            <div class="admin-panel">
                 <div class="section-header">
                     <h3>
                         <i class="fas fa-list-ul text-indigo-400 mr-2"></i> Project Categories
                     </h3>
                     <div class="flex gap-3">
-                        <a href="../leads/proposals/template_manager.php" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2">
+                        <a href="../leads/proposals/template_manager.php" class="admin-action admin-action-sm bg-white/10 text-white shadow-none hover:bg-white/20">
                             <i class="fas fa-file-invoice"></i> Manage Templates
                         </a>
                     </div>
@@ -97,7 +97,7 @@ include '../nav.php';
                                 <th class="px-6 py-4 text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-50 dark:divide-slate-800 bg-white dark:bg-slate-900/20" id="categoriesBody"></tbody>
+                        <tbody class="admin-table-body" id="categoriesBody"></tbody>
                     </table>
                 </div>
             </div>
@@ -105,7 +105,7 @@ include '../nav.php';
 
         <!-- Tab: User Management -->
         <div id="tab-users" class="admin-tab-pane hidden space-y-8">
-            <div class="card-base border-none">
+            <div class="admin-panel">
                 <div class="section-header">
                     <h3>
                         <i class="fas fa-users text-indigo-400 mr-2"></i> System Users
@@ -121,7 +121,7 @@ include '../nav.php';
                                 <th class="px-6 py-4 text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-50 dark:divide-slate-800 bg-white dark:bg-slate-900/20" id="usersBody"></tbody>
+                        <tbody class="admin-table-body" id="usersBody"></tbody>
                     </table>
                 </div>
             </div>
@@ -132,7 +132,7 @@ include '../nav.php';
                     <!-- Loaded via loadGlobalSettings -->
                 </div>
                 <div class="flex justify-end">
-                    <button type="submit" class="px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl active:scale-95 flex items-center gap-3">
+                    <button type="submit" class="admin-action admin-action-primary admin-action-lg">
                         <i class="fas fa-save"></i> Save Callout Configuration
                     </button>
                 </div>
@@ -143,7 +143,7 @@ include '../nav.php';
         <?php if ($isAdminUser): ?>
         <div id="tab-global-settings" class="admin-tab-pane hidden">
             <?php if ($isSuperAdmin): ?>
-            <div class="card-base p-8 space-y-6 border-none mb-8">
+            <div class="admin-panel admin-panel-body-lg space-y-6 mb-8">
                 <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                     <div>
                         <h4 class="text-xs font-black uppercase tracking-widest text-indigo-500 flex items-center gap-2">
@@ -153,41 +153,41 @@ include '../nav.php';
                             Local bootstrap settings stored on this tracker server. These are used before Laravel runtime settings load.
                         </p>
                     </div>
-                    <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">
+                    <div class="admin-chip border-amber-200 bg-amber-50 text-[10px] font-black uppercase tracking-widest text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">
                         Superadmin Only
                     </div>
                 </div>
                 <form id="appBootstrapForm" class="space-y-6">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">App Name</label>
-                            <input type="text" name="app_name" id="bootstrapAppName" class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all" placeholder="Tracker Dublin">
+                            <label class="admin-label">App Name</label>
+                            <input type="text" name="app_name" id="bootstrapAppName" class="admin-input" placeholder="Tracker Dublin">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Default Tenant</label>
-                            <input type="text" name="default_tenant" id="bootstrapDefaultTenant" class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all" placeholder="tenant-slug">
+                            <label class="admin-label">Default Tenant</label>
+                            <input type="text" name="default_tenant" id="bootstrapDefaultTenant" class="admin-input" placeholder="tenant-slug">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Tracker App URL</label>
-                            <input type="url" name="app_url" id="bootstrapAppUrl" class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all" placeholder="https://tracker.example.com">
+                            <label class="admin-label">Tracker App URL</label>
+                            <input type="url" name="app_url" id="bootstrapAppUrl" class="admin-input" placeholder="https://tracker.example.com">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Laravel API URL</label>
-                            <input type="url" name="laravel_api_url" id="bootstrapLaravelApiUrl" class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all" placeholder="https://api.example.com">
+                            <label class="admin-label">Laravel API URL</label>
+                            <input type="url" name="laravel_api_url" id="bootstrapLaravelApiUrl" class="admin-input" placeholder="https://api.example.com">
                         </div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs font-bold text-gray-500 dark:text-slate-400">
-                        <div class="rounded-2xl border border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950 p-4">
+                        <div class="admin-chip">
                             <span class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Current Runtime API URL</span>
                             <span id="bootstrapRuntimeApiUrl" class="break-all"><?php echo htmlspecialchars($laravelApiUrl ?? '', ENT_QUOTES, 'UTF-8'); ?></span>
                         </div>
-                        <div class="rounded-2xl border border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950 p-4">
+                        <div class="admin-chip">
                             <span class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Local Storage File</span>
                             <span class="break-all"><?php echo htmlspecialchars(TRACKER_BOOTSTRAP_CONFIG_PATH, ENT_QUOTES, 'UTF-8'); ?></span>
                         </div>
                     </div>
                     <div class="flex justify-end">
-                        <button type="submit" class="bg-slate-900 dark:bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-black dark:hover:bg-indigo-700 transition-all shadow-xl active:scale-95 flex items-center gap-3">
+                        <button type="submit" class="admin-action admin-action-dark admin-action-lg">
                             <i class="fas fa-save"></i> Save App Connection
                         </button>
                     </div>
@@ -202,7 +202,7 @@ include '../nav.php';
                     <!-- Tab Panes loaded via AJAX -->
                 </div>
                 <div class="pt-8 flex justify-end">
-                    <button type="submit" class="bg-indigo-600 hover:bg-emerald-600 text-white px-12 py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-xl active:scale-95 flex items-center gap-3">
+                    <button type="submit" class="admin-action admin-action-primary admin-action-lg">
                         <i class="fas fa-save text-indigo-200"></i> Update Global Configuration
                     </button>
                 </div>
@@ -212,7 +212,7 @@ include '../nav.php';
 
         <!-- Tab: Leave Types -->
         <div id="tab-leave-types" class="admin-tab-pane hidden">
-            <div class="card-base border-none">
+            <div class="admin-panel">
                 <div class="section-header">
                     <h3>
                         <i class="fas fa-calendar-alt text-indigo-400 mr-2"></i> Manage Leave Types
@@ -228,7 +228,7 @@ include '../nav.php';
                                 <th class="px-6 py-4 text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="leaveTypesBody" class="divide-y divide-gray-50 dark:divide-slate-800 bg-white dark:bg-slate-900/20"></tbody>
+                        <tbody id="leaveTypesBody" class="admin-table-body"></tbody>
                     </table>
                 </div>
             </div>
@@ -259,22 +259,22 @@ include '../nav.php';
                     </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <button id="clearCacheBtn" class="admin-action-btn bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-xl flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all">
+                    <button id="clearCacheBtn" class="admin-action admin-action-primary rounded-xl shadow-md">
                         <i class="fas fa-broom"></i> Clear Application Cache (cache:clear)
                     </button>
-                    <button id="clearRouteCacheBtn" class="admin-action-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-xl flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all">
+                    <button id="clearRouteCacheBtn" class="admin-action bg-blue-600 text-white hover:bg-blue-700 rounded-xl shadow-md">
                         <i class="fas fa-route"></i> Clear Route Cache
                     </button>
-                    <button id="clearConfigCacheBtn" class="admin-action-btn bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-xl flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all">
+                    <button id="clearConfigCacheBtn" class="admin-action bg-purple-600 text-white hover:bg-purple-700 rounded-xl shadow-md">
                         <i class="fas fa-cogs"></i> Clear Config Cache
                     </button>
-                    <button id="optimizeClearBtn" class="admin-action-btn bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-xl flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all">
+                    <button id="optimizeClearBtn" class="admin-action admin-action-success rounded-xl shadow-md">
                         <i class="fas fa-magic"></i> Clear All Compiled (optimize:clear)
                     </button>
-                    <button id="clearLogsBtn" class="admin-action-btn bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-xl flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all">
+                    <button id="clearLogsBtn" class="admin-action bg-red-600 text-white hover:bg-red-700 rounded-xl shadow-md">
                         <i class="fas fa-eraser"></i> Clear Application Logs
                     </button>
-                    <button id="clearSessionsBtn" class="admin-action-btn bg-orange-600 hover:bg-orange-700 text-white px-4 py-3 rounded-xl flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all">
+                    <button id="clearSessionsBtn" class="admin-action bg-orange-600 text-white hover:bg-orange-700 rounded-xl shadow-md">
                         <i class="fas fa-user-clock"></i> Clear Expired Sessions (>7 Days)
                     </button>
                 </div>
@@ -1052,18 +1052,45 @@ $(document).ready(function() {
                             if (!res.data.apis) {
                                 res.data.apis = [];
                             }
+                            if (!res.data.general) {
+                                res.data.general = [];
+                            }
                             if (!res.data.users) {
                                 res.data.users = [];
                             }
 
-                            const hasGmailLookbackSetting = res.data.apis.some(setting => setting.key === 'gmail_workorder_lookback_days');
-                            if (!hasGmailLookbackSetting) {
-                                res.data.apis.push({
+                            let gmailLookbackSetting = null;
+                            Object.keys(res.data).forEach(groupKey => {
+                                if (!Array.isArray(res.data[groupKey])) {
+                                    return;
+                                }
+                                const remaining = [];
+                                res.data[groupKey].forEach(setting => {
+                                    if ((setting.key || '') === 'gmail_workorder_lookback_days') {
+                                        gmailLookbackSetting = {
+                                            ...setting,
+                                            group: 'general',
+                                            description: setting.description || 'Gmail Work Order Lookback Days'
+                                        };
+                                        return;
+                                    }
+                                    remaining.push(setting);
+                                });
+                                res.data[groupKey] = remaining;
+                            });
+
+                            if (!gmailLookbackSetting) {
+                                gmailLookbackSetting = {
                                     key: 'gmail_workorder_lookback_days',
                                     value: '2',
-                                    group: 'apis',
+                                    group: 'general',
                                     description: 'Gmail Work Order Lookback Days'
-                                });
+                                };
+                            }
+
+                            const hasGmailLookbackSetting = res.data.general.some(setting => setting.key === 'gmail_workorder_lookback_days');
+                            if (!hasGmailLookbackSetting) {
+                                res.data.general.unshift(gmailLookbackSetting);
                             }
 
                             const hasSettingKey = (key) => Object.values(res.data).some(groupItems =>
@@ -1244,12 +1271,19 @@ $(document).ready(function() {
                                             'booking_near_base_max_distance_km'
                                         ]);
                                         const isNumberSetting = numericSettings.has(setting.key);
+                                        const numericAttributes = setting.key === 'gmail_workorder_lookback_days'
+                                            ? 'min="1" max="30" step="1"'
+                                            : (isNumberSetting ? 'step="0.1"' : '');
+                                        const helperText = setting.key === 'gmail_workorder_lookback_days'
+                                            ? '<p class="mt-2 text-xs font-medium text-gray-500 dark:text-gray-400">Controls how many days of Gmail messages the Work Orders inbox scans. Allowed range: 1 to 30 days.</p>'
+                                            : '';
                                         groupHtml += `
                                             <div>
                                                 <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">
                                                     ${escapeHtml(setting.description || setting.key)} ${settingBadge}
                                                 </label>
-                                                <input type="${isNumberSetting ? 'number' : 'text'}" name="${escapeHtml(setting.key)}" value="${escapeHtml(setting.value || '')}" ${isNumberSetting ? 'step="0.1"' : ''} class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                                                <input type="${isNumberSetting ? 'number' : 'text'}" name="${escapeHtml(setting.key)}" value="${escapeHtml(setting.value || '')}" ${numericAttributes} class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                                                ${helperText}
                                             </div>`;
                                     }
                                 });

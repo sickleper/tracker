@@ -22,24 +22,24 @@ $impersonatedUserName = trim((string) ($_SESSION['impersonated_user_name'] ?? ''
 $impersonatedUserEmail = trim((string) ($_SESSION['impersonated_user_email'] ?? ''));
 ?>
 
-<div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+<div class="admin-shell space-y-8">
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
             <h1 class="heading-brand">Tenant Manager</h1>
             <p class="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-widest mt-1">Create tenants, move users and categories, and review tenant distribution.</p>
         </div>
-        <div class="flex gap-3">
-            <a href="tenant_feature_diagnostic.php" class="bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-slate-700 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-50 dark:hover:bg-slate-800 transition-all active:scale-95 shadow-xl flex items-center gap-2">
+        <div class="flex flex-wrap gap-3">
+            <a href="tenant_feature_diagnostic.php" class="admin-action admin-action-outline-warning">
                 <i class="fas fa-stethoscope"></i> Feature Diagnostic
             </a>
-            <a href="index.php" class="bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-slate-700 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 dark:hover:bg-slate-800 transition-all active:scale-95 shadow-xl flex items-center gap-2">
+            <a href="index.php" class="admin-action admin-action-outline-info">
                 <i class="fas fa-cog"></i> Admin Home
             </a>
         </div>
     </div>
 
-    <section class="card-base border-none">
-        <div class="p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <section class="admin-panel">
+        <div class="admin-panel-body flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
                 <div class="text-[10px] font-black uppercase tracking-widest text-indigo-500">Tenant Login Context</div>
                 <?php if ($tenantImpersonationActive): ?>
@@ -57,12 +57,12 @@ $impersonatedUserEmail = trim((string) ($_SESSION['impersonated_user_email'] ?? 
                     </div>
                 <?php endif; ?>
             </div>
-            <div class="flex gap-3">
-                <a href="../index.php" class="px-5 py-3 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl active:scale-95 flex items-center gap-2">
+            <div class="flex flex-wrap gap-3">
+                <a href="../index.php" class="admin-action admin-action-primary">
                     <i class="fas fa-external-link-alt"></i> Open Tracker
                 </a>
                 <?php if ($tenantImpersonationActive): ?>
-                    <button type="button" id="restoreTenantContextBtn" class="px-5 py-3 bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-slate-700 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-50 dark:hover:bg-slate-800 transition-all active:scale-95 shadow-xl flex items-center gap-2">
+                    <button type="button" id="restoreTenantContextBtn" class="admin-action admin-action-outline-warning">
                         <i class="fas fa-undo"></i> Stop Impersonating
                     </button>
                 <?php endif; ?>
@@ -71,35 +71,35 @@ $impersonatedUserEmail = trim((string) ($_SESSION['impersonated_user_email'] ?? 
     </section>
 
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        <section class="card-base border-none xl:col-span-1">
+        <section class="admin-panel xl:col-span-1">
             <div class="section-header">
                 <h3><i class="fas fa-building text-indigo-400 mr-2"></i> Create Tenant</h3>
             </div>
-            <form id="tenantForm" class="p-8 space-y-6">
+            <form id="tenantForm" class="admin-panel-body-lg space-y-6">
                 <input type="hidden" id="tenantId">
                 <div>
-                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Name</label>
-                    <input type="text" id="tenantName" class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" required>
+                    <label class="admin-label">Name</label>
+                    <input type="text" id="tenantName" class="admin-input" required>
                 </div>
                 <div>
-                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Slug</label>
-                    <input type="text" id="tenantSlug" class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" required>
+                    <label class="admin-label">Slug</label>
+                    <input type="text" id="tenantSlug" class="admin-input" required>
                 </div>
                 <div>
-                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Status</label>
-                    <select id="tenantStatus" class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500">
+                    <label class="admin-label">Status</label>
+                    <select id="tenantStatus" class="admin-select">
                         <option value="active">Active</option>
                         <option value="inactive">Inactive</option>
                     </select>
                 </div>
                 <div class="flex gap-3">
-                    <button type="submit" class="flex-1 px-6 py-4 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl active:scale-95">Save Tenant</button>
-                    <button type="button" id="tenantResetBtn" class="px-6 py-4 bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 dark:hover:bg-slate-700 transition-all">Reset</button>
+                    <button type="submit" class="admin-action admin-action-primary admin-action-lg flex-1">Save Tenant</button>
+                    <button type="button" id="tenantResetBtn" class="admin-action admin-action-muted admin-action-lg">Reset</button>
                 </div>
             </form>
         </section>
 
-        <section class="card-base border-none xl:col-span-2">
+        <section class="admin-panel xl:col-span-2">
             <div class="section-header">
                 <h3><i class="fas fa-layer-group text-indigo-400 mr-2"></i> Tenants</h3>
             </div>
@@ -115,73 +115,73 @@ $impersonatedUserEmail = trim((string) ($_SESSION['impersonated_user_email'] ?? 
                             <th class="px-6 py-4 text-right">Actions</th>
                         </tr>
                     </thead>
-                    <tbody id="tenantsBody" class="divide-y divide-gray-50 dark:divide-slate-800 bg-white dark:bg-slate-900/20"></tbody>
+                    <tbody id="tenantsBody" class="admin-table-body"></tbody>
                 </table>
             </div>
         </section>
     </div>
 
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        <section class="card-base border-none">
+        <section class="admin-panel">
             <div class="section-header">
                 <h3><i class="fas fa-user-plus text-emerald-400 mr-2"></i> Assign User</h3>
             </div>
-            <form id="assignUserForm" class="p-8 space-y-6">
+            <form id="assignUserForm" class="admin-panel-body-lg space-y-6">
                 <div>
-                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">User</label>
-                    <select id="assignUserId" class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"></select>
+                    <label class="admin-label">User</label>
+                    <select id="assignUserId" class="admin-select"></select>
                 </div>
                 <div>
-                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Target Tenant</label>
-                    <select id="assignTenantId" class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"></select>
+                    <label class="admin-label">Target Tenant</label>
+                    <select id="assignTenantId" class="admin-select"></select>
                 </div>
                 <label class="flex items-center gap-3 text-xs font-bold text-gray-600 dark:text-slate-300">
                     <input type="checkbox" id="assignCascade" class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500">
                     Cascade common user-owned rows
                 </label>
-                <button type="submit" class="w-full px-6 py-4 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-xl active:scale-95">Assign User To Tenant</button>
+                <button type="submit" class="admin-action admin-action-success admin-action-lg w-full">Assign User To Tenant</button>
             </form>
         </section>
 
-        <section class="card-base border-none">
+        <section class="admin-panel">
             <div class="section-header">
                 <h3><i class="fas fa-project-diagram text-sky-400 mr-2"></i> Move Category</h3>
             </div>
-            <form id="moveCategoryForm" class="p-8 space-y-6">
+            <form id="moveCategoryForm" class="admin-panel-body-lg space-y-6">
                 <div>
-                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Category</label>
-                    <select id="moveCategoryId" class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-sky-500"></select>
+                    <label class="admin-label">Category</label>
+                    <select id="moveCategoryId" class="admin-select"></select>
                 </div>
                 <div>
-                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Target Tenant</label>
-                    <select id="moveTenantId" class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-sky-500"></select>
+                    <label class="admin-label">Target Tenant</label>
+                    <select id="moveTenantId" class="admin-select"></select>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <button type="button" id="dryRunBtn" class="px-6 py-4 bg-white dark:bg-slate-900 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-slate-700 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-sky-50 dark:hover:bg-slate-800 transition-all">Dry Run</button>
-                    <button type="submit" class="px-6 py-4 bg-sky-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-sky-700 transition-all shadow-xl active:scale-95">Move Category</button>
+                    <button type="button" id="dryRunBtn" class="admin-action admin-action-outline-sky admin-action-lg">Dry Run</button>
+                    <button type="submit" class="admin-action admin-action-info admin-action-lg">Move Category</button>
                 </div>
             </form>
         </section>
     </div>
 
-    <section class="card-base border-none space-y-6">
+    <section class="admin-panel admin-panel-body-lg space-y-6">
         <div class="section-header flex items-center justify-between">
             <div class="flex items-center gap-2">
                 <i class="fas fa-table text-amber-400"></i>
                 <h3>Tenant Report & Features</h3>
             </div>
             <div class="flex gap-2">
-                <button id="syncTenantBtn" type="button" class="px-5 py-2 bg-amber-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-600 transition-all shadow-xl active:scale-95">Sync Derived Data</button>
-                <button id="loadReportBtn" type="button" class="px-5 py-2 bg-gray-900 dark:bg-slate-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-black dark:hover:bg-slate-600 transition-all shadow-xl active:scale-95">Load Report</button>
+                <button id="syncTenantBtn" type="button" class="admin-action admin-action-warning admin-action-sm">Sync Derived Data</button>
+                <button id="loadReportBtn" type="button" class="admin-action admin-action-dark admin-action-sm">Load Report</button>
             </div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-                <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Tenant</label>
-                <select id="reportTenantId" class="w-full px-4 py-3 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-amber-500"></select>
+                <label class="admin-label">Tenant</label>
+                <select id="reportTenantId" class="admin-select"></select>
             </div>
             <div>
-                <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Feature Toggles</label>
+                <label class="admin-label">Feature Toggles</label>
                 <div class="grid grid-cols-1 gap-3" id="featureToggles">
                     <label class="flex items-center gap-3 text-sm">
                         <input type="checkbox" id="toggleFuel" class="w-4 h-4 border-gray-300 rounded">
@@ -204,7 +204,7 @@ $impersonatedUserEmail = trim((string) ($_SESSION['impersonated_user_email'] ?? 
                         <span class="font-bold uppercase tracking-widest text-xs">Tickets</span>
                     </label>
                 </div>
-                <button id="saveFeatureToggles" type="button" class="mt-4 w-full px-5 py-3 bg-sky-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-sky-700 transition-all shadow-xl active:scale-95">Save Feature Toggles</button>
+                <button id="saveFeatureToggles" type="button" class="admin-action admin-action-info mt-4 w-full">Save Feature Toggles</button>
             </div>
         </div>
         <div id="tenantReport" class="overflow-x-auto"></div>

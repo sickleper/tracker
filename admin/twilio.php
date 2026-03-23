@@ -16,21 +16,21 @@ include '../header.php';
 include '../nav.php';
 ?>
 
-<div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div class="admin-shell">
     <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
             <h1 class="heading-brand">Twilio Routing</h1>
             <p class="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-widest mt-1">Manage inbound number routing and inspect recent call logs.</p>
         </div>
         <div class="flex gap-3">
-            <button onclick="loadTwilioData()" class="px-4 py-3 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all active:scale-95 shadow-xl flex items-center gap-2">
+            <button onclick="loadTwilioData()" class="admin-action admin-action-primary">
                 <i class="fas fa-sync-alt"></i> Refresh
             </button>
         </div>
     </div>
 
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        <section class="xl:col-span-2 card-base border-none overflow-hidden">
+        <section class="xl:col-span-2 admin-panel">
             <div class="section-header">
                 <h3><i class="fas fa-phone text-indigo-400 mr-2"></i> Twilio Numbers</h3>
             </div>
@@ -44,37 +44,37 @@ include '../nav.php';
                             <th class="px-6 py-4 text-left">Actions</th>
                         </tr>
                     </thead>
-                    <tbody id="twilioNumbersBody" class="divide-y divide-gray-50 dark:divide-slate-800 bg-white dark:bg-slate-900/20">
+                    <tbody id="twilioNumbersBody" class="admin-table-body">
                         <tr><td colspan="4" class="px-6 py-10 text-center text-gray-400 font-bold uppercase tracking-widest text-[10px]">Loading numbers...</td></tr>
                     </tbody>
                 </table>
             </div>
         </section>
 
-        <section class="card-base border-none overflow-hidden">
+        <section class="admin-panel">
             <div class="section-header">
                 <h3><i class="fas fa-route text-indigo-400 mr-2"></i> Assignment Editor</h3>
             </div>
-            <div class="p-6 space-y-5">
+            <div class="admin-panel-body space-y-5">
                 <div>
-                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Twilio Number</label>
-                    <select id="phone_number" class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500">
+                    <label class="admin-label">Twilio Number</label>
+                    <select id="phone_number" class="admin-select">
                         <option value="">Select a number</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Users To Ring</label>
-                    <select id="user_ids" multiple class="w-full min-h-[220px] p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"></select>
-                    <p class="mt-2 text-[10px] text-gray-400 font-bold uppercase tracking-widest">Hold Ctrl/Cmd to select multiple users.</p>
+                <label class="admin-label">Staff Phone Numbers</label>
+                <select id="user_ids" multiple class="admin-select min-h-[220px]"></select>
+                <p class="mt-2 text-[10px] text-gray-400 font-bold uppercase tracking-widest">Only staff with configured mobile numbers can be routed. Hold Ctrl/Cmd to select multiple users.</p>
                 </div>
-                <button onclick="saveAssignments()" class="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl active:scale-95 text-xs flex items-center justify-center gap-3">
+                <button onclick="saveAssignments()" class="admin-action admin-action-primary admin-action-lg w-full text-xs">
                     <i class="fas fa-save text-indigo-200"></i> Save Routing
                 </button>
             </div>
         </section>
     </div>
 
-    <section class="mt-8 card-base border-none overflow-hidden">
+    <section class="mt-8 admin-panel">
         <div class="section-header">
             <h3><i class="fas fa-phone-volume text-indigo-400 mr-2"></i> Recent Call Logs</h3>
         </div>
@@ -89,11 +89,11 @@ include '../nav.php';
                         <th class="px-6 py-4 text-left">Status</th>
                     </tr>
                 </thead>
-                <tbody id="twilioLogsBody" class="divide-y divide-gray-50 dark:divide-slate-800 bg-white dark:bg-slate-900/20">
+                <tbody id="twilioLogsBody" class="admin-table-body">
                     <tr><td colspan="5" class="px-6 py-10 text-center text-gray-400 font-bold uppercase tracking-widest text-[10px]">Loading logs...</td></tr>
                 </tbody>
             </table>
-        </div>
+            </div>
     </section>
 </div>
 
@@ -141,7 +141,7 @@ function renderNumbers() {
                 <td class="px-6 py-4 text-gray-500 dark:text-gray-400">${safeFriendlyName}</td>
                 <td class="px-6 py-4 text-gray-700 dark:text-gray-300">${assignments}</td>
                 <td class="px-6 py-4">
-                    <button onclick='editNumber(${encodedPhoneNumber})' class="px-3 py-2 bg-gray-900 dark:bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black dark:hover:bg-indigo-700 transition-all">
+                    <button onclick='editNumber(${encodedPhoneNumber})' class="admin-action admin-action-dark admin-action-sm rounded-xl shadow-none">
                         Edit Routing
                     </button>
                 </td>
@@ -162,10 +162,21 @@ function renderNumbers() {
 function renderUsers() {
     const select = document.getElementById('user_ids');
     select.innerHTML = '';
-    window.twilioState.users.forEach((user) => {
+    const staffWithPhone = window.twilioState.users.filter((user) => user.mobile && user.mobile.trim() !== '');
+    const entries = staffWithPhone.length ? staffWithPhone : window.twilioState.users;
+    entries.forEach((user) => {
         const option = document.createElement('option');
         option.value = user.id;
-        option.textContent = `${user.name} ${user.mobile ? '- ' + user.mobile : ''}`;
+        const labelParts = [escapeHtml(user.name)];
+        if (user.mobile) {
+            labelParts.push(escapeHtml(user.mobile));
+            option.dataset.mobile = user.mobile;
+        } else {
+            option.dataset.mobile = '';
+            option.classList.add('text-gray-400');
+        }
+        option.textContent = labelParts.join(' - ');
+        option.disabled = !user.mobile;
         select.appendChild(option);
     });
 }
@@ -207,8 +218,28 @@ async function loadTwilioData() {
         renderNumbers();
         renderUsers();
         renderLogs(logsData.data || []);
+
+        if (!window.twilioState.users.length) {
+            await fetchStaffUsers();
+        }
     } catch (error) {
         Swal.fire('Error', error.message || 'Failed to load Twilio data.', 'error');
+        await fetchStaffUsers();
+    }
+}
+
+async function fetchStaffUsers() {
+    try {
+        const response = await fetch(`${window.laravelApiUrl}/api/users?team_only=1`, {
+            headers: twilioHeaders()
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+            window.twilioState.users = data.users || [];
+            renderUsers();
+        }
+    } catch (error) {
+        console.error('Failed to load staff list for Twilio assignment editor.', error);
     }
 }
 

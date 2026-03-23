@@ -175,7 +175,7 @@ if ($catRes && ($catRes['success'] ?? false)) $categories = $catRes['data'];
                         <select name="remind_type" class="w-full p-4 bg-white dark:bg-slate-950 border border-indigo-200 dark:border-indigo-800 rounded-xl outline-none text-sm font-bold focus:ring-2 focus:ring-indigo-500 dark:text-white">
                             <option value="hour">Hour(s)</option>
                             <option value="day">Day(s)</option>
-                            <option value="minute(s)">Minute(s)</option>
+                            <option value="minute">Minute(s)</option>
                         </select>
                     </div>
                 </div>
@@ -189,7 +189,7 @@ if ($catRes && ($catRes['success'] ?? false)) $categories = $catRes['data'];
             </div>
 
             <div class="p-6 bg-gray-50 dark:bg-slate-950 border-t border-gray-100 dark:border-slate-800 flex justify-between items-center">
-                <button type="button" onclick="clearFollowUp()" class="text-red-500 font-black text-xs uppercase tracking-widest hover:underline flex items-center gap-2 hover:bg-red-50 dark:hover:bg-red-900/30 px-4 py-2 rounded-xl transition-all">
+                <button type="button" id="clearFollowUpBtn" onclick="clearFollowUp()" class="hidden text-red-500 font-black text-xs uppercase tracking-widest hover:underline flex items-center gap-2 hover:bg-red-50 dark:hover:bg-red-900/30 px-4 py-2 rounded-xl transition-all">
                     <i class="fas fa-trash-alt"></i> Clear Follow Up
                 </button>
                 <div class="flex gap-3">

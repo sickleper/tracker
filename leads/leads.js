@@ -201,6 +201,12 @@ function openFollowUpModal(id, name) {
     $('#followUpLeadName').text(name);
     $('#followUpForm')[0].reset();
     $('#reminderOptions').addClass('hidden');
+    $('#clearFollowUpBtn').addClass('hidden');
+
+    if (followUpPicker) {
+        followUpPicker.destroy();
+        followUpPicker = null;
+    }
     
     $('#followUpModal').removeClass('hidden');
     $('body').addClass('overflow-hidden');
@@ -214,11 +220,12 @@ function openFollowUpModal(id, name) {
             const res = (typeof response === 'string') ? JSON.parse(response) : response;
             if (res.success && res.data.follow_ups && res.data.follow_ups.length > 0) {
                 const fu = res.data.follow_ups[0];
+                $('#clearFollowUpBtn').removeClass('hidden');
                 $('#followUpRemark').val(fu.remark || '');
                 $('#sendReminderSelect').val(fu.send_reminder || 'no').trigger('change');
                 if (fu.send_reminder === 'yes') {
                     $('input[name="remind_time"]').val(fu.remind_time || 1);
-                    $('select[name="remind_type"]').val(fu.remind_type || 'hour');
+                    $('select[name="remind_type"]').val(normalizeRemindType(fu.remind_type));
                 }
                 initFollowUpPicker(fu.next_follow_up_date);
             } else {
@@ -228,12 +235,23 @@ function openFollowUpModal(id, name) {
     });
 }
 
+function normalizeRemindType(value) {
+    const normalized = String(value || 'hour').toLowerCase();
+    if (normalized.includes('minute')) return 'minute';
+    if (normalized.includes('day')) return 'day';
+    return 'hour';
+}
+
 function initFollowUpPicker(defaultDate = null) {
+    const parsedDefaultDate = defaultDate ? new Date(defaultDate) : null;
+    const hasValidDefaultDate = parsedDefaultDate instanceof Date && !isNaN(parsedDefaultDate.getTime());
+    const minDate = hasValidDefaultDate && parsedDefaultDate < new Date() ? null : 'today';
+
     followUpPicker = flatpickr("#followUpDateTime", {
         enableTime: true,
         dateFormat: "Y-m-d H:i",
         defaultDate: defaultDate || new Date(),
-        minDate: "today",
+        minDate: minDate,
         onDayCreate: function(dObj, dStr, fp, dayElem) {
             // Check if this day is one of the callout days
             const dayIndex = dayElem.dateObj.getDay();
@@ -363,15 +381,16 @@ function convertToProject(id) {
             // 1. Trigger the API conversion (Lead -> Client -> Project)
             $.post(`leads_handler.php`, { action: 'convert_lead_to_project', id: id }, function(res) {
                 if (res.success) {
+                    const alreadyConverted = !!res.already_converted;
                     Swal.fire({
                         icon: 'success',
-                        title: 'Conversion Successful',
-                        text: 'Lead converted to Project #' + res.project_id,
+                        title: alreadyConverted ? 'Project Already Exists' : 'Conversion Successful',
+                        text: alreadyConverted
+                            ? 'This lead is already linked to Project #' + res.project_id
+                            : 'Lead converted to Project #' + res.project_id,
                         theme: getSwalTheme()
                     }).then(() => {
-                        // Redirect to the new Project View (to be created)
-                        // window.location.href = `../projects/view.php?id=${res.project_id}`;
-                        refreshLeads();
+                        window.location.href = `../projects/view.php?id=${res.project_id}`;
                     });
                 } else {
                     Swal.fire({ icon:'error', title:'Conversion Failed', text: res.message, theme: getSwalTheme() });
@@ -524,15 +543,21 @@ $(document).ready(function() {
             {
                 data: null,
                 className: 'text-center',
-                render: (row) => `
-                    <div class="flex items-center justify-center gap-2">
-                        <button onclick="openSummary(${row.id})" class="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl transition-all" title="View Summary"><i class="fas fa-id-card"></i></button>
-                        <a href="proposals/proposal_form.php?lead_id=${row.id}" class="p-2 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded-xl transition-all" title="Create Proposal"><i class="fas fa-file-invoice"></i></a>
-                        <button onclick="convertToProject(${row.id})" class="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-xl transition-all" title="Convert to Job"><i class="fas fa-check-double"></i></button>
-                        <button onclick="openEditLeadModal(${row.id})" class="p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-all" title="Edit Lead"><i class="fas fa-edit"></i></button>
-                        <button onclick="deleteLead(${row.id})" class="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all" title="Delete Lead"><i class="fas fa-trash-alt"></i></button>
-                    </div>
-                `
+                render: (row) => {
+                    const projectAction = row.project && row.project.id
+                        ? `<a href="../projects/view.php?id=${row.project.id}" class="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-xl transition-all" title="Open Project"><i class="fas fa-briefcase"></i></a>`
+                        : `<button onclick="convertToProject(${row.id})" class="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-xl transition-all" title="Convert to Project"><i class="fas fa-check-double"></i></button>`;
+
+                    return `
+                        <div class="flex items-center justify-center gap-2">
+                            <button onclick="openSummary(${row.id})" class="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl transition-all" title="View Summary"><i class="fas fa-id-card"></i></button>
+                            <a href="proposals/proposal_form.php?lead_id=${row.id}" class="p-2 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded-xl transition-all" title="Create Proposal"><i class="fas fa-file-invoice"></i></a>
+                            ${projectAction}
+                            <button onclick="openEditLeadModal(${row.id})" class="p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-all" title="Edit Lead"><i class="fas fa-edit"></i></button>
+                            <button onclick="deleteLead(${row.id})" class="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all" title="Delete Lead"><i class="fas fa-trash-alt"></i></button>
+                        </div>
+                    `;
+                }
             },
             {
                 data: null,
@@ -604,6 +629,13 @@ $(document).ready(function() {
         const id = $('#followUpLeadId').val();
         const data = {};
         $(this).serializeArray().forEach(item => data[item.name] = item.value);
+
+        if ((data.send_reminder || 'no') !== 'yes') {
+            data.remind_time = '';
+            data.remind_type = '';
+        } else {
+            data.remind_type = normalizeRemindType(data.remind_type);
+        }
 
         $.ajax({
             url: 'leads_handler.php',

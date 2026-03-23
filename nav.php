@@ -378,9 +378,6 @@ $moduleTicketsEnabled = featureEnabled('module_tickets_enabled');
     } catch (error) {
         seenReminderKeys = new Set();
     }
-    const adminReminderEndpoint = (window.appUrl || '').trim() ? `${window.appUrl.replace(/\/$/, '')}/notify_admin_whatsapp.php` : 'notify_admin_whatsapp.php';
-    const shouldNotifyAdmin = Boolean(window.whatsappAdminAlertsEnabled && window.whatsappAdminNumber && adminReminderEndpoint);
-
     const getDismissedVehicleAlerts = () => JSON.parse(localStorage.getItem('dismissed_vehicle_alerts') || '[]');
     const saveDismissedVehicleAlert = (id) => {
         const dismissed = getDismissedVehicleAlerts();
@@ -634,25 +631,12 @@ $moduleTicketsEnabled = featureEnabled('module_tickets_enabled');
 
     function trackReminderNotifications(reminders) {
         if (!Array.isArray(reminders) || reminders.length === 0) return;
-        const newItems = [];
         reminders.forEach(reminder => {
             const key = reminderLookupKey(reminder);
             if (!key || seenReminderKeys.has(key)) return;
             seenReminderKeys.add(key);
-            newItems.push({
-                key,
-                lead_name: reminder.lead_name ?? reminder.lead_email ?? 'Lead',
-                reminder_at: reminder.reminder_at ?? reminder.next_follow_up_date ?? '',
-                lead_email: reminder.lead_email ?? ''
-            });
         });
         persistSeenReminders();
-
-        if (newItems.length === 0 || !shouldNotifyAdmin) {
-            return;
-        }
-
-        notifyAdminAboutReminders(newItems);
     }
 
     function persistSeenReminders() {
@@ -663,17 +647,6 @@ $moduleTicketsEnabled = featureEnabled('module_tickets_enabled');
         localStorage.setItem(reminderStorageKey, JSON.stringify(Array.from(seenReminderKeys)));
     }
 
-    async function notifyAdminAboutReminders(items) {
-        try {
-            await fetch(adminReminderEndpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ reminders: items })
-            });
-        } catch (error) {
-            console.error('Admin reminder WhatsApp failed', error);
-        }
-    }
 })();
 </script>
     </div>
