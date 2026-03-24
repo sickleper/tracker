@@ -145,6 +145,15 @@ if (!isTrackerAuthenticated()) {
     exit();
 }
 
+if (!trackerIsPrimaryApp()) {
+    http_response_code(403);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Tenant manager tools are only available in the primary app.',
+    ]);
+    exit();
+}
+
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     http_response_code(405);
     echo json_encode([

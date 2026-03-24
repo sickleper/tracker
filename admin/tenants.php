@@ -12,6 +12,11 @@ if (!isTrackerSuperAdmin()) {
     exit();
 }
 
+if (!trackerIsPrimaryApp()) {
+    header('Location: index.php');
+    exit();
+}
+
 include '../header.php';
 include '../nav.php';
 

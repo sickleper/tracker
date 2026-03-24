@@ -1,5 +1,6 @@
 /dist
 /node_modules
+/storage/app_bootstrap.local.json
 /storage/deploy_logs/
 /local_sheets/
 /backup/backups/

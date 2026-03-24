@@ -16,16 +16,18 @@ if (!function_exists('isTrackerAdminUser') || !isTrackerAdminUser()) {
     exit();
 }
 
+if (!function_exists('trackerIsPrimaryApp') || !trackerIsPrimaryApp()) {
+    http_response_code(403);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Shared maintenance tools are available on the primary app only.',
+    ]);
+    exit();
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
     $requestedTenantSlug = trim((string) ($_POST['tenant_slug'] ?? ''));
-
-    if ($requestedTenantSlug !== '') {
-        $_POST['tenant_slug'] = $requestedTenantSlug;
-        $_GET['tenant_slug'] = $requestedTenantSlug;
-        $_SERVER['TENANT_SLUG'] = $requestedTenantSlug;
-    }
-
     $resolvedTenantSlug = trackerTenantSlug();
 
     $respond = static function (bool $success, string $message, int $statusCode = 200) use ($resolvedTenantSlug): void {
@@ -36,6 +38,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             'tenant_slug' => $resolvedTenantSlug,
         ]);
     };
+
+    if ($requestedTenantSlug !== '' && $resolvedTenantSlug !== '' && !hash_equals($resolvedTenantSlug, $requestedTenantSlug)) {
+        $respond(false, 'Tenant override is not allowed. Maintenance runs in the current runtime tenant context only.', 422);
+        exit();
+    }
 
     switch ($action) {
         case 'clear_cache':

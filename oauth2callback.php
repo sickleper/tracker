@@ -146,6 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['login_mode'] ?? '') === 'a
     $payload = json_encode([
         'email' => $email,
         'password' => $password,
+        'tenant_slug' => trackerTenantSlug(),
     ]);
 
     $ch = curl_init();
@@ -156,6 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['login_mode'] ?? '') === 'a
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Content-Type: application/json',
         'Accept: application/json',
+        'X-Tenant-Slug: ' . trackerTenantSlug(),
         'Content-Length: ' . strlen($payload),
     ]);
     $response = curl_exec($ch);
@@ -237,7 +239,8 @@ if (isset($_GET['code'])) {
         $api_data_payload = [
             'email' => $email,
             'name' => $name,
-            'google_id' => $googleId
+            'google_id' => $googleId,
+            'tenant_slug' => trackerTenantSlug(),
         ];
         $api_data_json = json_encode($api_data_payload);
 
@@ -251,6 +254,7 @@ if (isset($_GET['code'])) {
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Content-Type: application/json',
             'Accept: application/json', // Added this line
+            'X-Tenant-Slug: ' . trackerTenantSlug(),
             'Content-Length: ' . strlen($api_data_json)
         ]);
 

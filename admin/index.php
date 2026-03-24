@@ -11,6 +11,8 @@ if (!isTrackerAuthenticated()) {
 
 $isSuperAdmin = isTrackerSuperAdmin();
 $isAdminUser = isTrackerAdminUser();
+$canUseTenantAdminTools = function_exists('trackerCanUseTenantAdminTools') && trackerCanUseTenantAdminTools();
+$canUseSharedMaintenanceTools = function_exists('trackerIsPrimaryApp') && trackerIsPrimaryApp();
 
 if (!$isAdminUser) {
     header('Location: ../index.php');
@@ -33,12 +35,17 @@ include '../nav.php';
             <a href="profile.php" class="admin-action admin-action-outline-sky">
                 <i class="fas fa-id-card"></i> Profile
             </a>
+            <a href="api_docs.php" class="admin-action admin-action-outline-info">
+                <i class="fas fa-book"></i> API Docs
+            </a>
             <a href="client_portals.php" class="admin-action admin-action-outline-info">
                 <i class="fas fa-user-shield"></i> Client Portals
             </a>
+            <?php if ($canUseTenantAdminTools): ?>
             <a href="tenants.php" class="admin-action admin-action-outline-violet">
                 <i class="fas fa-building"></i> Tenants
             </a>
+            <?php endif; ?>
             <a href="deploy.php" class="admin-action admin-action-outline-success">
                 <i class="fas fa-rocket"></i> Deploy
             </a>
@@ -66,9 +73,11 @@ include '../nav.php';
             <button data-tab="leave-types" class="admin-tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-slate-400 dark:hover:text-slate-200 whitespace-nowrap py-4 px-1 border-b-2 font-black text-xs uppercase tracking-widest flex items-center gap-2">
                 <i class="fas fa-calendar-alt"></i> Leave Types
             </button>
+            <?php if ($canUseSharedMaintenanceTools): ?>
             <button data-tab="maintenance" class="admin-tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-slate-400 dark:hover:text-slate-200 whitespace-nowrap py-4 px-1 border-b-2 font-black text-xs uppercase tracking-widest flex items-center gap-2">
                 <i class="fas fa-tools"></i> Maintenance
             </button>
+            <?php endif; ?>
         </nav>
     </div>
 
@@ -176,6 +185,16 @@ include '../nav.php';
                             <input type="url" name="laravel_api_url" id="bootstrapLaravelApiUrl" class="admin-input" placeholder="https://api.example.com">
                         </div>
                     </div>
+                    <div class="rounded-2xl border border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950 px-4 py-4">
+                        <input type="hidden" name="is_primary_app" value="0">
+                        <label class="flex items-start gap-3 text-sm font-semibold text-gray-700 dark:text-slate-300">
+                            <input type="checkbox" name="is_primary_app" id="bootstrapIsPrimaryApp" value="1" class="mt-1 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                            <span>
+                                <span class="block text-[11px] font-black uppercase tracking-widest text-gray-500 dark:text-slate-400">Primary App</span>
+                                <span class="block mt-1">Enable only on the shared admin app. Tenant apps should leave this off and lock to one tenant slug.</span>
+                            </span>
+                        </label>
+                    </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs font-bold text-gray-500 dark:text-slate-400">
                         <div class="admin-chip">
                             <span class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Current Runtime API URL</span>
@@ -235,6 +254,7 @@ include '../nav.php';
         </div>
 
         <!-- Tab: Maintenance -->
+        <?php if ($canUseSharedMaintenanceTools): ?>
         <div id="tab-maintenance" class="admin-tab-pane hidden">
             <div class="card-base border-none p-6 space-y-4">
                 <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-4">System Maintenance Tools</h3>
@@ -243,7 +263,7 @@ include '../nav.php';
                         <div>
                             <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500">Tenant Context</p>
                             <p class="mt-2 text-sm font-bold text-gray-700 dark:text-slate-200">
-                                Default tenant-aware maintenance calls will run against the current runtime tenant.
+                                Maintenance calls are locked to the current runtime tenant for this app and cannot be redirected by request data.
                             </p>
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-bold text-gray-600 dark:text-slate-300">
@@ -280,6 +300,7 @@ include '../nav.php';
                 </div>
             </div>
         </div>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -966,6 +987,7 @@ $(document).ready(function() {
             $('#bootstrapAppUrl').val(data.app_url || '');
             $('#bootstrapLaravelApiUrl').val(data.laravel_api_url || '');
             $('#bootstrapDefaultTenant').val(data.default_tenant || data.default_tenant_slug || '');
+            $('#bootstrapIsPrimaryApp').prop('checked', String(data.is_primary_app || '') === '1' || String(data.is_primary_app || '').toLowerCase() === 'true');
             $('#bootstrapRuntimeApiUrl').text(data.laravel_api_url || window.laravelApiUrl || '');
         }).fail(function(xhr) {
             const message = xhr.responseJSON?.message || 'Unable to load app connection settings.';
@@ -1475,22 +1497,8 @@ $(document).ready(function() {
     }
 
     // --- Maintenance Functions ---
-    function getMaintenanceTenantContext() {
-        return {
-            tenant_slug: String(window.trackerTenantSlug || '').trim(),
-            tenant_id: String(<?php echo json_encode((string) ($_SESSION['tenant_id'] ?? '')); ?>).trim()
-        };
-    }
-
     function runMaintenanceAction(action, successTitle) {
-        const tenantContext = getMaintenanceTenantContext();
-        const payload = {
-            action,
-            tenant_slug: tenantContext.tenant_slug,
-            tenant_id: tenantContext.tenant_id
-        };
-
-        $.post('../admin/maintenance_handler.php', payload, function(res) {
+        $.post('../admin/maintenance_handler.php', { action }, function(res) {
             if (res.success) {
                 Swal.fire({ ...getSwalConfig(), icon: 'success', title: successTitle, text: res.message });
                 if (res.tenant_slug) {

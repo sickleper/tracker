@@ -23,9 +23,9 @@ if (!isTrackerAdminUser()) {
 $userInfo = posix_getpwuid(posix_geteuid());
 $userName = $userInfo['name'];
 $userHome = $userInfo['dir'];
-$repoDir = '/home/workorders/trackers';
+$repoDir = realpath(dirname(__DIR__)) ?: dirname(__DIR__);
 
-if (!is_dir($repoDir . '/.git')) {
+if (trim((string) shell_exec('git -C ' . escapeshellarg($repoDir) . ' rev-parse --is-inside-work-tree 2>/dev/null')) !== 'true') {
     echo json_encode(['success' => false, 'message' => 'Git not configured']);
     exit();
 }

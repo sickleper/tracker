@@ -30,6 +30,12 @@ $moduleToolInventoryEnabled = featureEnabled('module_tool_inventory_enabled');
 $moduleHolidaysEnabled = featureEnabled('module_holidays_enabled');
 $moduleTimesheetsEnabled = featureEnabled('module_timesheets_enabled');
 $moduleTicketsEnabled = featureEnabled('module_tickets_enabled');
+$canUseTenantAdminTools = function_exists('trackerCanUseTenantAdminTools') && trackerCanUseTenantAdminTools();
+$trackerTenantSlug = function_exists('trackerTenantSlug') ? trackerTenantSlug() : '';
+$trackerAppModeLabel = function_exists('trackerIsPrimaryApp') && trackerIsPrimaryApp() ? 'Primary App' : 'Tenant App';
+$trackerAppModeClass = $trackerAppModeLabel === 'Primary App'
+    ? 'bg-emerald-500 text-white'
+    : 'bg-amber-300 text-slate-950';
 ?>
 <!-- User/System Top Bar -->
 <div class="bg-gray-900/50 dark:bg-black/20 backdrop-blur-sm border-b border-white/5 py-2 no-print">
@@ -60,6 +66,18 @@ $moduleTicketsEnabled = featureEnabled('module_tickets_enabled');
             <div class="hidden sm:flex items-center gap-2 text-[9px] font-black uppercase tracking-widest">
                 <i class="fas fa-user-circle opacity-50"></i>
                 <span>Logged in: <span class="text-white"><?php echo htmlspecialchars($_SESSION['user_name'] ?? 'User'); ?></span></span>
+                <?php if ($isAdmin): ?>
+                    <span class="ml-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[8px] font-black italic tracking-tighter shadow-sm <?php echo $trackerAppModeClass; ?>">
+                        <i class="fas fa-layer-group"></i>
+                        <?php echo htmlspecialchars($trackerAppModeLabel); ?>
+                    </span>
+                    <?php if ($trackerTenantSlug !== ''): ?>
+                        <span class="inline-flex items-center gap-1 rounded border border-white/10 bg-white/10 px-1.5 py-0.5 text-[8px] font-black tracking-tighter text-white/90 shadow-sm">
+                            <i class="fas fa-building opacity-70"></i>
+                            <?php echo htmlspecialchars($trackerTenantSlug); ?>
+                        </span>
+                    <?php endif; ?>
+                <?php endif; ?>
                 <?php 
                 $isSuperAdmin = isTrackerSuperAdmin();
                 
@@ -187,9 +205,11 @@ $moduleTicketsEnabled = featureEnabled('module_tickets_enabled');
                                 <a href="<?php echo $base; ?>admin/client_portals.php" class="block px-4 py-3 text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                                     <i class="fas fa-user-shield mr-2 opacity-50"></i> Client Portals
                                 </a>
+                                <?php if ($canUseTenantAdminTools): ?>
                                 <a href="<?php echo $base; ?>admin/tenants.php" class="block px-4 py-3 text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                                     <i class="fas fa-building mr-2 opacity-50"></i> Tenant Manager
                                 </a>
+                                <?php endif; ?>
                                 <a href="<?php echo $base; ?>admin/deploy.php" class="block px-4 py-3 text-xs font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors">
                                     <i class="fas fa-rocket mr-2 opacity-50"></i> Deploy Tracker
                                 </a>
@@ -328,7 +348,9 @@ $moduleTicketsEnabled = featureEnabled('module_tickets_enabled');
                     <?php if (isTrackerSuperAdmin()): ?>
                     <a href="<?php echo $base; ?>admin/profile.php" class="block px-8 py-2 text-sm font-bold uppercase tracking-widest text-sky-200 hover:text-white dark:hover:bg-slate-800">Admin Profile</a>
                     <a href="<?php echo $base; ?>admin/client_portals.php" class="block px-8 py-2 text-sm font-bold uppercase tracking-widest text-indigo-100 hover:text-white dark:hover:bg-slate-800">Client Portals</a>
+                    <?php if ($canUseTenantAdminTools): ?>
                     <a href="<?php echo $base; ?>admin/tenants.php" class="block px-8 py-2 text-sm font-bold uppercase tracking-widest text-indigo-100 hover:text-white dark:hover:bg-slate-800">Tenant Manager</a>
+                    <?php endif; ?>
                     <a href="<?php echo $base; ?>admin/deploy.php" class="block px-8 py-2 text-sm font-bold uppercase tracking-widest text-emerald-300 hover:text-white dark:hover:bg-slate-800">Deploy Tracker</a>
                     <a href="<?php echo $base; ?>work_order_workflow.php" class="block px-8 py-2 text-sm font-bold uppercase tracking-widest text-indigo-100 hover:text-white dark:hover:bg-slate-800">Work Order Workflow</a>
                     <a href="<?php echo $base; ?>projects/workflow.php" class="block px-8 py-2 text-sm font-bold uppercase tracking-widest text-indigo-100 hover:text-white dark:hover:bg-slate-800">Project Workflow</a>

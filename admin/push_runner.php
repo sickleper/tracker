@@ -26,9 +26,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
 }
 
 $branch = trim((string) ($_POST['branch'] ?? 'main'));
-$repoDir = '/home/workorders/trackers';
+$repoDir = realpath(dirname(__DIR__)) ?: dirname(__DIR__);
 
-if (!is_dir($repoDir . '/.git')) {
+if (trim((string) shell_exec('git -C ' . escapeshellarg($repoDir) . ' rev-parse --is-inside-work-tree 2>/dev/null')) !== 'true') {
     http_response_code(503);
     echo json_encode(['success' => false, 'message' => 'Git not configured']);
     exit();

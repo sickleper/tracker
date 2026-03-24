@@ -33,16 +33,16 @@ if (!in_array($branch, $allowedBranches, true)) {
     exit();
 }
 
-$repoDir = '/home/workorders/trackers';
+$repoDir = realpath(dirname(__DIR__)) ?: dirname(__DIR__);
 $scriptPath = $repoDir . '/deploy.sh';
 $logDir = $repoDir . '/storage/deploy_logs';
 $lockPath = $logDir . '/deploy.lock';
 
-if (!is_dir($repoDir . '/.git')) {
+if (trim((string) shell_exec('git -C ' . escapeshellarg($repoDir) . ' rev-parse --is-inside-work-tree 2>/dev/null')) !== 'true') {
     http_response_code(503);
     echo json_encode([
         'success' => false,
-        'message' => 'Git is not configured for /home/workorders/trackers yet.',
+        'message' => 'Git is not configured for this tracker checkout yet.',
     ]);
     exit();
 }

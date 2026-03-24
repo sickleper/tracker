@@ -15,9 +15,9 @@ if (!$isAdminUser) {
     exit();
 }
 
-$repoDir = '/home/workorders/trackers';
+$repoDir = realpath(dirname(__DIR__)) ?: dirname(__DIR__);
 $allowedBranches = ['main', 'master'];
-$repoConfigured = is_dir($repoDir . '/.git');
+$repoConfigured = trim((string) @shell_exec('git -C ' . escapeshellarg($repoDir) . ' rev-parse --is-inside-work-tree 2>/dev/null')) === 'true';
 $currentBranch = $repoConfigured ? trim((string) @shell_exec('cd ' . escapeshellarg($repoDir) . ' && git rev-parse --abbrev-ref HEAD 2>/dev/null')) : '';
 $currentCommit = $repoConfigured ? trim((string) @shell_exec('cd ' . escapeshellarg($repoDir) . ' && git rev-parse --short HEAD 2>/dev/null')) : '';
 $lastCommitMessage = $repoConfigured ? trim((string) @shell_exec('cd ' . escapeshellarg($repoDir) . ' && git log -1 --pretty=%s 2>/dev/null')) : '';

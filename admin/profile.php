@@ -54,6 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $loginPayload = json_encode([
                 'email' => $_SESSION['email'] ?? '',
                 'password' => $currentPassword,
+                'tenant_slug' => trackerTenantSlug(),
             ]);
 
             $ch = curl_init();
@@ -64,6 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
                 'Content-Type: application/json',
                 'Accept: application/json',
+                'X-Tenant-Slug: ' . trackerTenantSlug(),
                 'Content-Length: ' . strlen($loginPayload),
             ]);
             $loginResponse = curl_exec($ch);

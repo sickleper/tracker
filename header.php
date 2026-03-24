@@ -97,7 +97,7 @@
 ?>
 </head>
 <body class="bg-main-gradient min-h-screen transition-colors duration-300">
-<?php if (!empty($_SESSION['impersonation_active'])): ?>
+<?php if (trackerIsPrimaryApp() && !empty($_SESSION['impersonation_active'])): ?>
     <?php $tenantLoginUrl = rtrim(trackerAppUrl(), '/') . '/admin/tenant_login.php'; ?>
     <?php $tenantDiagnosticUrl = rtrim(trackerAppUrl(), '/') . '/admin/tenant_feature_diagnostic.php'; ?>
     <div class="bg-amber-500 text-slate-950 px-4 py-3 text-xs font-black uppercase tracking-widest no-print">

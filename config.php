@@ -1,14 +1,29 @@
 <?php
-require_once __DIR__ . '/../vendor/autoload.php';
+$trackerRepoDir = realpath(__DIR__) ?: __DIR__;
+$trackerSharedRoot = realpath(__DIR__ . '/..') ?: dirname(__DIR__);
+
+require_once $trackerSharedRoot . '/vendor/autoload.php';
 
 // config.php
 
 // Load .env file
-$dotenv = \Dotenv\Dotenv::createImmutable(__DIR__ . '/../'); // Path to workorders project root
+$dotenv = \Dotenv\Dotenv::createImmutable($trackerSharedRoot); // Path to shared workorders root
 $dotenv->load();
 
+if (!defined('TRACKER_REPO_DIR')) {
+    define('TRACKER_REPO_DIR', $trackerRepoDir);
+}
+
+if (!defined('TRACKER_SHARED_ROOT')) {
+    define('TRACKER_SHARED_ROOT', $trackerSharedRoot);
+}
+
 if (!defined('TRACKER_BOOTSTRAP_CONFIG_PATH')) {
-    define('TRACKER_BOOTSTRAP_CONFIG_PATH', __DIR__ . '/storage/app_bootstrap.json');
+    define('TRACKER_BOOTSTRAP_CONFIG_PATH', TRACKER_REPO_DIR . '/storage/app_bootstrap.local.json');
+}
+
+if (!defined('TRACKER_BOOTSTRAP_LEGACY_CONFIG_PATH')) {
+    define('TRACKER_BOOTSTRAP_LEGACY_CONFIG_PATH', TRACKER_REPO_DIR . '/storage/app_bootstrap.json');
 }
 
 if (!function_exists('trackerDefaultBootstrapConfig')) {
@@ -19,6 +34,7 @@ if (!function_exists('trackerDefaultBootstrapConfig')) {
             'app_url' => '',
             'laravel_api_url' => '',
             'default_tenant' => '',
+            'is_primary_app' => '',
             'updated_at' => '',
             'updated_by' => '',
         ];
@@ -34,6 +50,7 @@ if (!function_exists('trackerNormalizeBootstrapConfig')) {
         $normalized['app_url'] = rtrim(trim((string) ($config['app_url'] ?? '')), '/');
         $normalized['laravel_api_url'] = rtrim(trim((string) ($config['laravel_api_url'] ?? '')), '/');
         $normalized['default_tenant'] = trim((string) ($config['default_tenant'] ?? $config['default_tenant_slug'] ?? ''));
+        $normalized['is_primary_app'] = trim((string) ($config['is_primary_app'] ?? ''));
         $normalized['updated_at'] = trim((string) ($config['updated_at'] ?? ''));
         $normalized['updated_by'] = trim((string) ($config['updated_by'] ?? ''));
 
@@ -51,13 +68,21 @@ if (!function_exists('trackerLoadBootstrapConfig')) {
         }
 
         $config = trackerDefaultBootstrapConfig();
-        $path = TRACKER_BOOTSTRAP_CONFIG_PATH;
+        $paths = [
+            TRACKER_BOOTSTRAP_CONFIG_PATH,
+            TRACKER_BOOTSTRAP_LEGACY_CONFIG_PATH,
+        ];
 
-        if (is_file($path) && is_readable($path)) {
+        foreach ($paths as $path) {
+            if (!is_file($path) || !is_readable($path)) {
+                continue;
+            }
+
             $raw = file_get_contents($path);
             $decoded = json_decode($raw ?: '', true);
             if (is_array($decoded)) {
                 $config = trackerNormalizeBootstrapConfig($decoded);
+                break;
             }
         }
 
@@ -113,7 +138,7 @@ foreach ($trackerBootstrapMap as $envKey => $configKey) {
 $GLOBALS['tracker_bootstrap_config'] = $trackerBootstrapConfig;
 
 // Global Session Configuration
-define('SESSION_SAVE_PATH', '/home/workorders/tmp');
+define('SESSION_SAVE_PATH', TRACKER_SHARED_ROOT . '/tmp');
 if (session_status() === PHP_SESSION_NONE) {
     ini_set('session.save_path', SESSION_SAVE_PATH);
     session_start();
@@ -159,6 +184,31 @@ if (!function_exists('trackerSuperAdminEmail')) {
     function trackerSuperAdminEmail(): string
     {
         return trim((string) ($GLOBALS['super_admin_email'] ?? $_ENV['SUPER_ADMIN_EMAIL'] ?? ''));
+    }
+}
+
+if (!function_exists('trackerIsPrimaryApp')) {
+    function trackerIsPrimaryApp(): bool
+    {
+        $config = $GLOBALS['tracker_bootstrap_config'] ?? trackerLoadBootstrapConfig();
+        $explicit = trim((string) ($config['is_primary_app'] ?? $_ENV['TRACKER_PRIMARY_APP'] ?? ''));
+        if ($explicit !== '') {
+            return filter_var($explicit, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        $defaultTenant = trim((string) ($config['default_tenant'] ?? $_SERVER['TENANT_SLUG'] ?? $_ENV['TENANT_SLUG'] ?? ''));
+        if ($defaultTenant === '') {
+            return true;
+        }
+
+        return strcasecmp($defaultTenant, 'default_tenant') === 0;
+    }
+}
+
+if (!function_exists('trackerCanUseTenantAdminTools')) {
+    function trackerCanUseTenantAdminTools(): bool
+    {
+        return trackerIsPrimaryApp() && isTrackerSuperAdmin();
     }
 }
 
@@ -215,6 +265,13 @@ if (!function_exists('trackerTenantSlug')) {
                 $_SESSION['tenant_slug'] = $impersonatedSlug;
                 $resolved = $impersonatedSlug;
             }
+            return $resolved;
+        }
+
+        $configuredDefaultSlug = trim((string) ($_SERVER['TENANT_SLUG'] ?? $_ENV['TENANT_SLUG'] ?? ''));
+        if ($configuredDefaultSlug !== '') {
+            $_SESSION['tenant_slug'] = $configuredDefaultSlug;
+            $resolved = $configuredDefaultSlug;
             return $resolved;
         }
 

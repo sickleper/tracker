@@ -7,6 +7,11 @@ if (!isTrackerAuthenticated()) {
     exit();
 }
 
+if (!trackerIsPrimaryApp()) {
+    header('Location: ../index.php');
+    exit();
+}
+
 if (!isTrackerSuperAdmin() && empty($_SESSION['impersonation_active'])) {
     header('Location: ../index.php');
     exit();
@@ -91,9 +96,11 @@ include '../header.php';
             <p class="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-widest mt-1">Inspect the tenant resolution and feature values PHP sees at runtime.</p>
         </div>
         <div class="flex gap-3">
+            <?php if (trackerCanUseTenantAdminTools()): ?>
             <a href="tenants.php" class="bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-slate-700 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 dark:hover:bg-slate-800 transition-all active:scale-95 shadow-xl flex items-center gap-2">
                 <i class="fas fa-building"></i> Tenant Manager
             </a>
+            <?php endif; ?>
         </div>
     </div>
 

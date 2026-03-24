@@ -62,6 +62,7 @@ $appName = trim((string) ($_POST['app_name'] ?? ''));
 $appUrl = normalizeBootstrapUrl((string) ($_POST['app_url'] ?? ''));
 $laravelApiUrl = normalizeBootstrapUrl((string) ($_POST['laravel_api_url'] ?? ''));
 $defaultTenantSlug = trim((string) ($_POST['default_tenant'] ?? $_POST['default_tenant_slug'] ?? ''));
+$isPrimaryApp = trim((string) ($_POST['is_primary_app'] ?? '0'));
 
 if ($defaultTenantSlug !== '') {
     $defaultTenantSlug = preg_replace('/[^a-zA-Z0-9._-]/', '', $defaultTenantSlug) ?? '';
@@ -87,6 +88,7 @@ try {
         'app_url' => $appUrl,
         'laravel_api_url' => $laravelApiUrl,
         'default_tenant' => $defaultTenantSlug,
+        'is_primary_app' => $isPrimaryApp,
     ], (string) ($_SESSION['email'] ?? $_SESSION['user_name'] ?? ''));
 
     echo json_encode([
