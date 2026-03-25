@@ -150,6 +150,61 @@ $impersonatedUserEmail = trim((string) ($_SESSION['impersonated_user_email'] ?? 
 
         <section class="admin-panel">
             <div class="section-header">
+                <h3><i class="fas fa-clone text-sky-400 mr-2"></i> One-Click Provisioning</h3>
+                <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400">Creates tenant in API, provisions instance, and sets up admin user.</p>
+            </div>
+            <form id="provisionForm" class="admin-panel-body-lg space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="admin-label">Target Directory</label>
+                        <input type="text" id="provTargetDir" class="admin-input" placeholder="e.g. trackers-acme" required>
+                    </div>
+                    <div>
+                        <label class="admin-label">App Name</label>
+                        <input type="text" id="provAppName" class="admin-input" placeholder="e.g. Acme Tracker" required>
+                    </div>
+                </div>
+                <div>
+                    <label class="admin-label">App URL</label>
+                    <input type="url" id="provAppUrl" class="admin-input" placeholder="https://acme.webdesign-dublin.com" required>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-gray-100 dark:border-slate-800 pb-4 mb-4">
+                    <div>
+                        <label class="admin-label">Tenant Slug</label>
+                        <input type="text" id="provTenantSlug" class="admin-input" placeholder="acme" required>
+                    </div>
+                    <div>
+                        <label class="admin-label">Branch</label>
+                        <input type="text" id="provBranch" class="admin-input" value="main" required>
+                    </div>
+                </div>
+
+                <!-- Admin User Creation -->
+                <div class="bg-indigo-50/30 dark:bg-indigo-900/10 p-4 rounded-2xl border border-indigo-100/50 dark:border-indigo-900/30 space-y-4">
+                    <div class="text-[10px] font-black uppercase tracking-widest text-indigo-500">Initial Office Admin User</div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="admin-label">Admin Email</label>
+                            <input type="email" id="provAdminEmail" class="admin-input" placeholder="manager@client.com">
+                        </div>
+                        <div>
+                            <label class="admin-label">Admin Name</label>
+                            <input type="text" id="provAdminName" class="admin-input" placeholder="Office Manager">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="admin-label">Admin Password</label>
+                        <input type="password" id="provAdminPassword" class="admin-input" placeholder="Initial password for login">
+                    </div>
+                </div>
+
+                <button type="submit" class="admin-action admin-action-info admin-action-lg w-full">Start One-Click Provisioning</button>
+            </form>
+        </section>
+    </div>
+
+        <section class="admin-panel">
+            <div class="section-header">
                 <h3><i class="fas fa-project-diagram text-sky-400 mr-2"></i> Move Category</h3>
             </div>
             <form id="moveCategoryForm" class="admin-panel-body-lg space-y-6">
@@ -278,6 +333,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('tenantResetBtn').addEventListener('click', resetTenantForm);
     document.getElementById('tenantForm').addEventListener('submit', saveTenant);
     document.getElementById('assignUserForm').addEventListener('submit', assignUserToTenant);
+    document.getElementById('provisionForm').addEventListener('submit', provisionInstance);
     document.getElementById('moveCategoryForm').addEventListener('submit', (event) => moveCategoryToTenant(event, false));
     document.getElementById('dryRunBtn').addEventListener('click', (event) => moveCategoryToTenant(event, true));
     document.getElementById('loadReportBtn').addEventListener('click', loadTenantReport);
@@ -433,10 +489,65 @@ function renderTenants() {
                     <button type="button" onclick="openTenantImpersonation(${tenant.id}, '${escapeHtml(tenant.slug)}', '${escapeHtml(tenant.name)}')" class="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 font-black uppercase text-[9px] tracking-widest rounded-lg hover:bg-emerald-600 hover:text-white transition-all">Login</button>
                     <button type="button" onclick="editTenant(${tenant.id})" class="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-black uppercase text-[9px] tracking-widest rounded-lg hover:bg-indigo-600 hover:text-white transition-all">Edit</button>
                     <button type="button" onclick="loadTenantReport(${tenant.id})" class="px-3 py-1.5 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200 font-black uppercase text-[9px] tracking-widest rounded-lg hover:bg-gray-900 hover:text-white transition-all">Report</button>
+                    ${tenant.slug !== 'default' ? `
+                        <button type="button" onclick="deleteTenant(${tenant.id}, '${escapeHtml(tenant.slug)}')" class="px-3 py-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-black uppercase text-[9px] tracking-widest rounded-lg hover:bg-red-600 hover:text-white transition-all">Delete</button>
+                    ` : ''}
                 </div>
             </td>
         </tr>
     `).join('');
+}
+
+async function deleteTenant(tenantId, slug) {
+    const { value: targetDir } = await Swal.fire({
+        ...swalConfig(),
+        title: 'Delete Tenant?',
+        html: `This will delete database records and the physical directory.<br><br>Please enter the <b>directory name</b> to confirm (e.g. trackers-acme):`,
+        input: 'text',
+        inputPlaceholder: 'Directory name...',
+        showCancelButton: true,
+        confirmButtonText: 'Delete Everything',
+        confirmButtonColor: '#ef4444',
+        inputValidator: (value) => {
+            if (!value) return 'You must provide the directory name!';
+        }
+    });
+
+    if (!targetDir) return;
+
+    const confirm2 = await Swal.fire({
+        ...swalConfig(),
+        title: 'Final Confirmation',
+        text: `Are you absolutely sure you want to delete tenant ID ${tenantId} (${slug}) and the directory "${targetDir}"? This cannot be undone.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, delete it',
+        confirmButtonColor: '#ef4444'
+    });
+
+    if (!confirm2.isConfirmed) return;
+
+    Swal.fire({
+        ...swalConfig(),
+        title: 'Deleting...',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+
+    try {
+        const result = await apiJson('delete_tenant_handler.php', {
+            method: 'POST',
+            headers: tenantJsonHeaders(),
+            body: JSON.stringify({
+                tenant_id: tenantId,
+                target_dir: targetDir
+            })
+        });
+        await Swal.fire({ ...swalConfig(), icon: 'success', title: 'Deleted', text: result.message });
+        await loadTenants();
+    } catch (error) {
+        Swal.fire({ ...swalConfig(), icon: 'error', title: 'Deletion Failed', text: error.message });
+    }
 }
 
 function populateTenantSelects() {
@@ -690,6 +801,52 @@ async function saveFeatureToggles() {
         window.location.reload();
     } catch (error) {
         Swal.fire({ ...swalConfig(), icon: 'error', title: 'Save Failed', text: error.message });
+    }
+}
+
+async function provisionInstance(event) {
+    event.preventDefault();
+    const payload = {
+        target_dir: document.getElementById('provTargetDir').value.trim(),
+        app_name: document.getElementById('provAppName').value.trim(),
+        app_url: document.getElementById('provAppUrl').value.trim(),
+        tenant_slug: document.getElementById('provTenantSlug').value.trim(),
+        branch: document.getElementById('provBranch').value.trim(),
+        admin_email: document.getElementById('provAdminEmail').value.trim(),
+        admin_name: document.getElementById('provAdminName').value.trim(),
+        admin_password: document.getElementById('provAdminPassword').value
+    };
+
+    Swal.fire({
+        ...swalConfig(),
+        title: 'Provisioning...',
+        text: 'Please wait while the new instance is being created.',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
+    try {
+        const result = await apiJson('provision_handler.php', {
+            method: 'POST',
+            headers: tenantJsonHeaders(),
+            body: JSON.stringify(payload)
+        });
+        Swal.fire({
+            ...swalConfig(),
+            icon: 'success',
+            title: 'Provisioning Complete',
+            html: `<div class="text-left"><p>${result.message}</p><pre class="mt-4 p-4 bg-gray-100 dark:bg-slate-800 rounded text-[10px] overflow-auto max-h-60">${escapeHtml(result.output)}</pre></div>`
+        });
+        document.getElementById('provisionForm').reset();
+    } catch (error) {
+        Swal.fire({
+            ...swalConfig(),
+            icon: 'error',
+            title: 'Provisioning Failed',
+            text: error.message
+        });
     }
 }
 </script>
