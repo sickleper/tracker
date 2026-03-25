@@ -70,7 +70,14 @@ if (!is_executable($scriptPath)) {
     exit();
 }
 
-$command = sprintf("sudo bash %s %s 2>&1", escapeshellarg($scriptPath), escapeshellarg($targetDir));
+$sudoPassword = $_ENV['SUDO_PASSWORD'] ?? '';
+if (empty($sudoPassword)) {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'SUDO_PASSWORD is not set. Cannot execute deletion. DB records were deleted.']);
+    exit();
+}
+
+$command = sprintf("echo %s | sudo -S -u root bash %s %s 2>&1", escapeshellarg($sudoPassword), escapeshellarg($scriptPath), escapeshellarg($targetDir));
 $output = [];
 $exitCode = 1;
 exec($command, $output, $exitCode);

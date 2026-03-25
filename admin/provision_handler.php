@@ -86,37 +86,34 @@ if (!$existingTenant) {
 
 // 2. Create or Assign Admin User if email provided
 if ($adminEmail !== '') {
-    // Check if user already exists
-    $usersRes = makeApiCall('/api/users?all=1');
-    $targetUser = null;
-    if ($usersRes && ($usersRes['success'] ?? false)) {
-        foreach (($usersRes['users'] ?? []) as $user) {
-            if (strtolower($user['email']) === strtolower($adminEmail)) {
-                $targetUser = $user;
-                break;
+    // Attempt to create the user
+    $createUserRes = makeApiCall('/api/users/create', $userPayload, 'POST');
+
+    // If user creation failed, it might be because they already exist.
+    // Check for the specific error message and attempt to assign them instead.
+    if (!$createUserRes || !($createUserRes['success'] ?? false)) {
+        if (strpos($createUserRes['message'] ?? '', 'The email has already been taken') !== false) {
+            // Find the user ID to perform the assignment
+            $usersRes = makeApiCall('/api/users?all=1');
+            $targetUser = null;
+            if ($usersRes && ($usersRes['success'] ?? false)) {
+                foreach (($usersRes['users'] ?? []) as $user) {
+                    if (strtolower($user['email']) === strtolower($adminEmail)) {
+                        $targetUser = $user;
+                        break;
+                    }
+                }
+            }
+
+            if ($targetUser) {
+                // User exists, assign to tenant and ensure office role
+                makeApiCall("/api/tenants/{$tenantId}/assign-user", [
+                    'user_id' => $targetUser['id'],
+                    'is_office' => 1,
+                    'cascade' => true
+                ], 'POST');
             }
         }
-    }
-
-    if (!$targetUser) {
-        $userPayload = [
-            'email' => $adminEmail,
-            'name' => $adminName,
-            'is_office' => 1,
-            'status' => 'active',
-            'tenant_id' => $tenantId
-        ];
-        if ($adminPassword !== '') {
-            $userPayload['password'] = $adminPassword;
-        }
-        makeApiCall('/api/users/create', $userPayload, 'POST');
-    } else {
-        // User exists, assign to tenant and ensure office role
-        makeApiCall("/api/tenants/{$tenantId}/assign-user", [
-            'user_id' => $targetUser['id'],
-            'is_office' => 1,
-            'cascade' => true
-        ], 'POST');
     }
 }
 
@@ -130,8 +127,15 @@ if (!is_executable($scriptPath)) {
     exit();
 }
 
+$sudoPassword = $_ENV['SUDO_PASSWORD'] ?? '';
+if (empty($sudoPassword)) {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'SUDO_PASSWORD is not set in the environment. Cannot execute provisioning.']);
+    exit();
+}
+
 $command = sprintf(
-    "bash %s %s %s %s %s %s %s %s 2>&1",
+    "sudo -n %s %s %s %s %s %s %s %s 2>&1",
     escapeshellarg($scriptPath),
     escapeshellarg($targetDir),
     escapeshellarg($appName),
@@ -141,6 +145,10 @@ $command = sprintf(
     escapeshellarg($appMode),
     escapeshellarg($branch)
 );
+
+$output = [];
+$exitCode = 1;
+exec($command, $output, $exitCode);
 
 $output = [];
 $exitCode = 1;
