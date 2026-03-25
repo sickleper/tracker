@@ -97,7 +97,7 @@ fi
 ORIGIN_URL="$(git_in_repo remote get-url origin 2>/dev/null || true)"
 
 echo "Cloning $SCRIPT_DIR into $TARGET_DIR on branch $BRANCH..."
-git clone --branch "$BRANCH" "$SCRIPT_DIR" "$TARGET_DIR"
+git -c safe.directory="$SCRIPT_DIR" clone --branch "$BRANCH" "$SCRIPT_DIR" "$TARGET_DIR"
 
 if [ -n "$ORIGIN_URL" ]; then
   git -C "$TARGET_DIR" remote set-url origin "$ORIGIN_URL"
