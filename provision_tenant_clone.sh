@@ -4,6 +4,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SHARED_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+git_in_repo() {
+  git -c safe.directory="$SCRIPT_DIR" -C "$SCRIPT_DIR" "$@"
+}
+
 usage() {
   echo "Usage: $0 <target-dir> <app-name> <app-url> <api-url> <tenant-slug> [primary|tenant] [branch]"
   echo "Example: $0 trackers-acme \"Acme Tracker\" \"https://acme.example.com\" \"https://api.example.com\" acme tenant main"
@@ -50,18 +54,18 @@ case "$APP_MODE" in
     ;;
 esac
 
-if ! git -C "$SCRIPT_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+if ! git_in_repo rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "ERROR: $SCRIPT_DIR is not a Git checkout"
   exit 1
 fi
 
-if [ -n "$(git -C "$SCRIPT_DIR" status --porcelain)" ]; then
+if [ -n "$(git_in_repo status --porcelain)" ]; then
   echo "ERROR: Source checkout is dirty."
   echo "Commit or stash local changes before provisioning a tenant clone."
   exit 1
 fi
 
-SOURCE_BRANCH="$(git -C "$SCRIPT_DIR" rev-parse --abbrev-ref HEAD)"
+SOURCE_BRANCH="$(git_in_repo rev-parse --abbrev-ref HEAD)"
 if [ -z "$BRANCH" ]; then
   BRANCH="$SOURCE_BRANCH"
 fi
@@ -90,7 +94,7 @@ if [ -e "$TARGET_DIR" ]; then
   exit 1
 fi
 
-ORIGIN_URL="$(git -C "$SCRIPT_DIR" remote get-url origin 2>/dev/null || true)"
+ORIGIN_URL="$(git_in_repo remote get-url origin 2>/dev/null || true)"
 
 echo "Cloning $SCRIPT_DIR into $TARGET_DIR on branch $BRANCH..."
 git clone --branch "$BRANCH" "$SCRIPT_DIR" "$TARGET_DIR"

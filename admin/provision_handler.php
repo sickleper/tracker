@@ -127,15 +127,8 @@ if (!is_executable($scriptPath)) {
     exit();
 }
 
-$sudoPassword = $_ENV['SUDO_PASSWORD'] ?? '';
-if (empty($sudoPassword)) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'SUDO_PASSWORD is not set in the environment. Cannot execute provisioning.']);
-    exit();
-}
-
 $command = sprintf(
-    "sudo -n %s %s %s %s %s %s %s %s 2>&1",
+    "sudo -n /usr/bin/bash %s %s %s %s %s %s %s %s 2>&1",
     escapeshellarg($scriptPath),
     escapeshellarg($targetDir),
     escapeshellarg($appName),
@@ -150,9 +143,37 @@ $output = [];
 $exitCode = 1;
 exec($command, $output, $exitCode);
 
-$output = [];
-$exitCode = 1;
-exec($command, $output, $exitCode);
+$combinedOutput = implode("\n", $output);
+if ($exitCode !== 0 && stripos($combinedOutput, 'a password is required') !== false) {
+    $sudoPassword = $_ENV['SUDO_PASSWORD'] ?? '';
+    if ($sudoPassword === '') {
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Provisioning failed because sudo requires a password and SUDO_PASSWORD is not set.',
+            'exit_code' => $exitCode,
+            'output' => $combinedOutput,
+        ]);
+        exit();
+    }
+
+    $command = sprintf(
+        "echo %s | sudo -S /usr/bin/bash %s %s %s %s %s %s %s %s 2>&1",
+        escapeshellarg($sudoPassword),
+        escapeshellarg($scriptPath),
+        escapeshellarg($targetDir),
+        escapeshellarg($appName),
+        escapeshellarg($appUrl),
+        escapeshellarg($apiUrl),
+        escapeshellarg($tenantSlug),
+        escapeshellarg($appMode),
+        escapeshellarg($branch)
+    );
+
+    $output = [];
+    $exitCode = 1;
+    exec($command, $output, $exitCode);
+}
 
 echo json_encode([
     'success' => $exitCode === 0,
