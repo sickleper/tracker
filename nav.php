@@ -170,6 +170,10 @@ $trackerAppModeClass = $trackerAppModeLabel === 'Primary App'
                     </a>
                     <?php endif; ?>
 
+                    <a href="<?php echo $base; ?>receipt_scanner/index.php" class="px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest <?php echo (strpos($_SERVER['REQUEST_URI'], '/receipt_scanner/') !== false) ? 'bg-indigo-800 text-white' : 'text-indigo-100 hover:bg-indigo-600'; ?> transition-all">
+                        <i class="fas fa-receipt mr-1"></i> Receipt Scanner
+                    </a>
+
                     <?php if ($moduleToolInventoryEnabled): ?>
                     <a href="<?php echo $base; ?>tool_inventory/index.php" class="px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest <?php echo ($isToolInventory) ? 'bg-indigo-800 text-white' : 'text-indigo-100 hover:bg-indigo-600'; ?> transition-all">
                         <i class="fas fa-tools mr-1"></i> Tool Inventory

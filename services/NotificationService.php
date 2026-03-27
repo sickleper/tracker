@@ -10,6 +10,27 @@ use PHPMailer\PHPMailer\Exception;
 
 class NotificationService {
 
+    private function envOrGlobal(string $globalKey, string $envKey, string $fallback = ''): string
+    {
+        $globalValue = trim((string) ($GLOBALS[$globalKey] ?? ''));
+        $envValue = trim((string) ($_ENV[$envKey] ?? getenv($envKey) ?? ''));
+
+        $globalLooksPlaceholder = $globalValue === ''
+            || str_contains(strtolower($globalValue), 'your_')
+            || str_contains(strtolower($globalValue), 'placeholder')
+            || strtolower($globalValue) === 'changeme';
+
+        if ($envValue !== '' && ($globalLooksPlaceholder || $globalValue !== $envValue)) {
+            return $envValue;
+        }
+
+        if ($globalValue !== '') {
+            return $globalValue;
+        }
+
+        return $envValue !== '' ? $envValue : $fallback;
+    }
+
     private function trackerAppUrl(): string
     {
         if (function_exists('trackerAppUrl')) {
@@ -412,9 +433,15 @@ class NotificationService {
 
     private function sendWhatsAppMessage(string $rawTo, string $body, ?string $templateSid = null, array $templateVars = []): array
     {
-        $sid = $GLOBALS['twilio_sid'] ?? $_ENV['TWILIO_SID'] ?? '';
-        $token = $GLOBALS['twilio_auth_token'] ?? $_ENV['TWILIO_AUTH_TOKEN'] ?? '';
-        $fromNumber = $GLOBALS['twilio_whatsapp_from'] ?? $_ENV['TWILIO_WHATSAPP_FROM'] ?? $_ENV['TWILIO_PHONE_NUMBER'] ?? $_ENV['TWILIO_FROM'] ?? '+14155238886';
+        $sid = $this->envOrGlobal('twilio_sid', 'TWILIO_SID');
+        $token = $this->envOrGlobal('twilio_auth_token', 'TWILIO_AUTH_TOKEN');
+        $fromNumber = $this->envOrGlobal('twilio_whatsapp_from', 'TWILIO_WHATSAPP_FROM');
+        if ($fromNumber === '') {
+            $fromNumber = $this->envOrGlobal('twilio_phone_number', 'TWILIO_PHONE_NUMBER');
+        }
+        if ($fromNumber === '') {
+            $fromNumber = $this->envOrGlobal('twilio_from', 'TWILIO_FROM', '+14155238886');
+        }
 
         if (!$sid || !$token) {
             return ['success' => false, 'message' => 'Twilio credentials missing.'];
@@ -429,7 +456,6 @@ class NotificationService {
         $params = [
             'from' => 'whatsapp:' . $cleanFrom
         ];
-        $twilioClient = new Client($sid, $token);
         if (!empty($templateSid)) {
             $params['contentSid'] = trim($templateSid);
             if (!empty($templateVars)) {
@@ -439,16 +465,96 @@ class NotificationService {
             $params['body'] = trim($body);
         }
 
-        if (!empty($_ENV['TWILIO_EDGE']) && $_ENV['TWILIO_EDGE'] === 'ie1') {
-            $twilioClient->setEdge('ie1');
+        if (class_exists(Client::class)) {
+            $twilioClient = new Client($sid, $token);
+            if (!empty($_ENV['TWILIO_EDGE']) && $_ENV['TWILIO_EDGE'] === 'ie1') {
+                $twilioClient->setEdge('ie1');
+            }
+
+            $message = $twilioClient->messages->create('whatsapp:' . $cleanTo, $params);
+            if ($message->sid) {
+                return [
+                    'success' => true,
+                    'message' => 'WhatsApp message sent successfully.',
+                    'sid' => (string) $message->sid,
+                    'status' => (string) ($message->status ?? ''),
+                    'error_code' => $message->errorCode ?? null,
+                    'error_message' => $message->errorMessage ?? null,
+                ];
+            }
+
+            return [
+                'success' => false,
+                'message' => 'Failed to send WhatsApp message.',
+                'sid' => (string) ($message->sid ?? ''),
+                'status' => (string) ($message->status ?? ''),
+                'error_code' => $message->errorCode ?? null,
+                'error_message' => $message->errorMessage ?? null,
+            ];
         }
 
-        $message = $twilioClient->messages->create('whatsapp:' . $cleanTo, $params);
-        if ($message->sid) {
-            return ['success' => true, 'message' => 'WhatsApp message sent successfully.'];
+        $postFields = ['To' => 'whatsapp:' . $cleanTo, 'From' => $params['from']];
+        if (isset($params['body'])) {
+            $postFields['Body'] = $params['body'];
+        }
+        if (isset($params['contentSid'])) {
+            $postFields['ContentSid'] = $params['contentSid'];
+        }
+        if (isset($params['contentVariables'])) {
+            $postFields['ContentVariables'] = $params['contentVariables'];
         }
 
-        return ['success' => false, 'message' => 'Failed to send WhatsApp message.'];
+        $ch = curl_init('https://api.twilio.com/2010-04-01/Accounts/' . rawurlencode($sid) . '/Messages.json');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => http_build_query($postFields),
+            CURLOPT_USERPWD => $sid . ':' . $token,
+            CURLOPT_HTTPAUTH => CURLAUTH_BASIC,
+            CURLOPT_TIMEOUT => 30,
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($response === false || $curlError !== '') {
+            return ['success' => false, 'message' => 'Twilio connection failed: ' . $curlError];
+        }
+
+        $decoded = json_decode((string) $response, true);
+        if ($httpCode >= 200 && $httpCode < 300 && !empty($decoded['sid'])) {
+            return [
+                'success' => true,
+                'message' => 'WhatsApp message sent successfully.',
+                'sid' => (string) ($decoded['sid'] ?? ''),
+                'status' => (string) ($decoded['status'] ?? ''),
+                'error_code' => $decoded['error_code'] ?? null,
+                'error_message' => $decoded['error_message'] ?? null,
+            ];
+        }
+
+        return [
+            'success' => false,
+            'message' => $decoded['message'] ?? 'Failed to send WhatsApp message.',
+            'sid' => (string) ($decoded['sid'] ?? ''),
+            'status' => (string) ($decoded['status'] ?? ''),
+            'error_code' => $decoded['code'] ?? ($decoded['error_code'] ?? null),
+            'error_message' => $decoded['message'] ?? ($decoded['error_message'] ?? null),
+            'more_info' => $decoded['more_info'] ?? null,
+        ];
+    }
+
+    public function sendDirectWhatsApp(string $rawTo, string $body): array
+    {
+        // Driver-link messages are always sent as plain WhatsApp body text.
+        return $this->sendWhatsAppMessage($rawTo, $body, null, []);
+    }
+
+    public function sendTemplatedWhatsApp(string $rawTo, string $templateSid, array $templateVars = []): array
+    {
+        return $this->sendWhatsAppMessage($rawTo, '', $templateSid, $templateVars);
     }
 
     private function formatWhatsAppNumber(string $value): string

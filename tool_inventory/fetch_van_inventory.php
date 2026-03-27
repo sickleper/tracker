@@ -9,14 +9,14 @@ require_once __DIR__ . '/../tracker_data.php';
 
 if (!isTrackerAuthenticated()) {
     http_response_code(401);
-    echo json_encode([]);
+    echo json_encode(['success' => false, 'message' => 'Unauthorized', 'data' => []]);
     exit;
 }
 
 $vehicleID = isset($_GET['vehicle_id']) ? intval($_GET['vehicle_id']) : 0;
 
 if ($vehicleID <= 0) {
-    echo json_encode([]);
+    echo json_encode(['success' => false, 'message' => 'Vehicle not selected', 'data' => []]);
     exit;
 }
 
@@ -37,10 +37,11 @@ try {
             ];
         }, $response['data']);
 
-        echo json_encode($mapped);
+        echo json_encode(['success' => true, 'data' => $mapped]);
     } else {
-        echo json_encode([]);
+        echo json_encode(['success' => false, 'message' => $response['message'] ?? 'Failed to load inventory', 'data' => []]);
     }
 } catch (Exception $e) {
-    echo json_encode([]);
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => $e->getMessage(), 'data' => []]);
 }

@@ -31,7 +31,7 @@ $impersonatedUserEmail = trim((string) ($_SESSION['impersonated_user_email'] ?? 
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
             <h1 class="heading-brand">Tenant Manager</h1>
-            <p class="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-widest mt-1">Create tenants, move users and categories, and review tenant distribution.</p>
+            <p class="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-widest mt-1">Provision tenants, assign users, and review tenant distribution.</p>
         </div>
         <div class="flex flex-wrap gap-3">
             <a href="tenant_feature_diagnostic.php" class="admin-action admin-action-outline-warning">
@@ -75,36 +75,8 @@ $impersonatedUserEmail = trim((string) ($_SESSION['impersonated_user_email'] ?? 
         </div>
     </section>
 
-    <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        <section class="admin-panel xl:col-span-1">
-            <div class="section-header">
-                <h3><i class="fas fa-building text-indigo-400 mr-2"></i> Create Tenant</h3>
-            </div>
-            <form id="tenantForm" class="admin-panel-body-lg space-y-6">
-                <input type="hidden" id="tenantId">
-                <div>
-                    <label class="admin-label">Name</label>
-                    <input type="text" id="tenantName" class="admin-input" required>
-                </div>
-                <div>
-                    <label class="admin-label">Slug</label>
-                    <input type="text" id="tenantSlug" class="admin-input" required>
-                </div>
-                <div>
-                    <label class="admin-label">Status</label>
-                    <select id="tenantStatus" class="admin-select">
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                    </select>
-                </div>
-                <div class="flex gap-3">
-                    <button type="submit" class="admin-action admin-action-primary admin-action-lg flex-1">Save Tenant</button>
-                    <button type="button" id="tenantResetBtn" class="admin-action admin-action-muted admin-action-lg">Reset</button>
-                </div>
-            </form>
-        </section>
-
-        <section class="admin-panel xl:col-span-2">
+    <div class="grid grid-cols-1 gap-8">
+        <section class="admin-panel">
             <div class="section-header">
                 <h3><i class="fas fa-layer-group text-indigo-400 mr-2"></i> Tenants</h3>
             </div>
@@ -126,28 +98,7 @@ $impersonatedUserEmail = trim((string) ($_SESSION['impersonated_user_email'] ?? 
         </section>
     </div>
 
-    <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        <section class="admin-panel">
-            <div class="section-header">
-                <h3><i class="fas fa-user-plus text-emerald-400 mr-2"></i> Assign User</h3>
-            </div>
-            <form id="assignUserForm" class="admin-panel-body-lg space-y-6">
-                <div>
-                    <label class="admin-label">User</label>
-                    <select id="assignUserId" class="admin-select"></select>
-                </div>
-                <div>
-                    <label class="admin-label">Target Tenant</label>
-                    <select id="assignTenantId" class="admin-select"></select>
-                </div>
-                <label class="flex items-center gap-3 text-xs font-bold text-gray-600 dark:text-slate-300">
-                    <input type="checkbox" id="assignCascade" class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500">
-                    Cascade common user-owned rows
-                </label>
-                <button type="submit" class="admin-action admin-action-success admin-action-lg w-full">Assign User To Tenant</button>
-            </form>
-        </section>
-
+    <div class="grid grid-cols-1 gap-8">
         <section class="admin-panel">
             <div class="section-header">
                 <h3><i class="fas fa-clone text-sky-400 mr-2"></i> One-Click Provisioning</h3>
@@ -203,36 +154,11 @@ $impersonatedUserEmail = trim((string) ($_SESSION['impersonated_user_email'] ?? 
         </section>
     </div>
 
-        <section class="admin-panel">
-            <div class="section-header">
-                <h3><i class="fas fa-project-diagram text-sky-400 mr-2"></i> Move Category</h3>
-            </div>
-            <form id="moveCategoryForm" class="admin-panel-body-lg space-y-6">
-                <div>
-                    <label class="admin-label">Category</label>
-                    <select id="moveCategoryId" class="admin-select"></select>
-                </div>
-                <div>
-                    <label class="admin-label">Target Tenant</label>
-                    <select id="moveTenantId" class="admin-select"></select>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <button type="button" id="dryRunBtn" class="admin-action admin-action-outline-sky admin-action-lg">Dry Run</button>
-                    <button type="submit" class="admin-action admin-action-info admin-action-lg">Move Category</button>
-                </div>
-            </form>
-        </section>
-    </div>
-
     <section class="admin-panel admin-panel-body-lg space-y-6">
         <div class="section-header flex items-center justify-between">
             <div class="flex items-center gap-2">
                 <i class="fas fa-table text-amber-400"></i>
                 <h3>Tenant Report & Features</h3>
-            </div>
-            <div class="flex gap-2">
-                <button id="syncTenantBtn" type="button" class="admin-action admin-action-warning admin-action-sm">Sync Derived Data</button>
-                <button id="loadReportBtn" type="button" class="admin-action admin-action-dark admin-action-sm">Load Report</button>
             </div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -291,7 +217,7 @@ const featureToggleMapping = [
 ];
 
 let tenantRows = [];
-let tenantLookups = { users: [], categories: [] };
+let tenantLookups = { users: [] };
 const reportTenantStorageKey = 'tracker_admin_report_tenant_id';
 
 function escapeHtml(value) {
@@ -330,14 +256,7 @@ function persistReportTenantId(tenantId) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    document.getElementById('tenantResetBtn').addEventListener('click', resetTenantForm);
-    document.getElementById('tenantForm').addEventListener('submit', saveTenant);
-    document.getElementById('assignUserForm').addEventListener('submit', assignUserToTenant);
     document.getElementById('provisionForm').addEventListener('submit', provisionInstance);
-    document.getElementById('moveCategoryForm').addEventListener('submit', (event) => moveCategoryToTenant(event, false));
-    document.getElementById('dryRunBtn').addEventListener('click', (event) => moveCategoryToTenant(event, true));
-    document.getElementById('loadReportBtn').addEventListener('click', loadTenantReport);
-    document.getElementById('syncTenantBtn').addEventListener('click', syncTenantData);
     document.getElementById('saveFeatureToggles')?.addEventListener('click', saveFeatureToggles);
     document.getElementById('restoreTenantContextBtn')?.addEventListener('click', restoreTenantContext);
     document.getElementById('reportTenantId')?.addEventListener('change', (event) => {
@@ -463,8 +382,7 @@ async function loadTenants() {
 
 async function loadLookups() {
     const data = await apiJson(`${window.laravelApiUrl}/api/tenants/lookups`, { headers: tenantHeaders() });
-    tenantLookups = data.data || { users: [], categories: [] };
-    populateLookupSelects();
+    tenantLookups = data.data || { users: [] };
 }
 
 function renderTenants() {
@@ -487,7 +405,6 @@ function renderTenants() {
             <td class="px-6 py-4 text-right">
                 <div class="flex justify-end gap-2">
                     <button type="button" onclick="openTenantImpersonation(${tenant.id}, '${escapeHtml(tenant.slug)}', '${escapeHtml(tenant.name)}')" class="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 font-black uppercase text-[9px] tracking-widest rounded-lg hover:bg-emerald-600 hover:text-white transition-all">Login</button>
-                    <button type="button" onclick="editTenant(${tenant.id})" class="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-black uppercase text-[9px] tracking-widest rounded-lg hover:bg-indigo-600 hover:text-white transition-all">Edit</button>
                     <button type="button" onclick="loadTenantReport(${tenant.id})" class="px-3 py-1.5 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200 font-black uppercase text-[9px] tracking-widest rounded-lg hover:bg-gray-900 hover:text-white transition-all">Report</button>
                     ${tenant.slug !== 'default' ? `
                         <button type="button" onclick="deleteTenant(${tenant.id}, '${escapeHtml(tenant.slug)}')" class="px-3 py-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-black uppercase text-[9px] tracking-widest rounded-lg hover:bg-red-600 hover:text-white transition-all">Delete</button>
@@ -552,12 +469,10 @@ async function deleteTenant(tenantId, slug) {
 
 function populateTenantSelects() {
     const currentValues = {
-        assignTenantId: document.getElementById('assignTenantId')?.value || '',
-        moveTenantId: document.getElementById('moveTenantId')?.value || '',
         reportTenantId: document.getElementById('reportTenantId')?.value || ''
     };
     const options = tenantRows.map((tenant) => `<option value="${tenant.id}">${escapeHtml(tenant.name)} (${escapeHtml(tenant.slug)})</option>`).join('');
-    ['assignTenantId', 'moveTenantId', 'reportTenantId'].forEach((id) => {
+    ['reportTenantId'].forEach((id) => {
         const select = document.getElementById(id);
         if (select) {
             select.innerHTML = options;
@@ -568,142 +483,34 @@ function populateTenantSelects() {
     });
 }
 
-function populateLookupSelects() {
-    document.getElementById('assignUserId').innerHTML = tenantLookups.users.map((user) => {
-        const tenantLabel = user.tenant_id ? `Tenant ${user.tenant_id}` : 'No Tenant';
-        return `<option value="${user.id}">${escapeHtml(user.name)} (${escapeHtml(user.email || '')}) • ${tenantLabel}</option>`;
-    }).join('');
-
-    document.getElementById('moveCategoryId').innerHTML = tenantLookups.categories.map((category) => {
-        const tenantLabel = category.tenant_id ? `Tenant ${category.tenant_id}` : 'No Tenant';
-        return `<option value="${category.id}">${escapeHtml(category.category_name)} • ${tenantLabel}</option>`;
-    }).join('');
-}
-
-function editTenant(id) {
-    const tenant = tenantRows.find((row) => Number(row.id) === Number(id));
-    if (!tenant) {
-        return;
-    }
-
-    document.getElementById('tenantId').value = tenant.id;
-    document.getElementById('tenantName').value = tenant.name || '';
-    document.getElementById('tenantSlug').value = tenant.slug || '';
-    document.getElementById('tenantStatus').value = tenant.status || 'active';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function resetTenantForm() {
-    document.getElementById('tenantForm').reset();
-    document.getElementById('tenantId').value = '';
-    document.getElementById('tenantStatus').value = 'active';
-}
-
-async function saveTenant(event) {
-    event.preventDefault();
-    const tenantId = document.getElementById('tenantId').value;
-    const payload = {
-        name: document.getElementById('tenantName').value.trim(),
-        slug: document.getElementById('tenantSlug').value.trim(),
-        status: document.getElementById('tenantStatus').value
-    };
-
-    const url = tenantId ? `${window.laravelApiUrl}/api/tenants/${tenantId}` : `${window.laravelApiUrl}/api/tenants`;
-    const method = tenantId ? 'PATCH' : 'POST';
-
-    try {
-        const result = await apiJson(url, {
-            method,
-            headers: tenantJsonHeaders(),
-            body: JSON.stringify(payload)
-        });
-        Swal.fire({ ...swalConfig(), icon: 'success', title: 'Saved', text: result.message || 'Tenant saved.' });
-        resetTenantForm();
-        await loadTenants();
-    } catch (error) {
-        Swal.fire({ ...swalConfig(), icon: 'error', title: 'Save Failed', text: error.message });
-    }
-}
-
-async function assignUserToTenant(event) {
-    event.preventDefault();
-    const tenantId = document.getElementById('assignTenantId').value;
-    const payload = {
-        user_id: Number(document.getElementById('assignUserId').value),
-        cascade: document.getElementById('assignCascade').checked
-    };
-
-    try {
-        const result = await apiJson(`${window.laravelApiUrl}/api/tenants/${tenantId}/assign-user`, {
-            method: 'POST',
-            headers: tenantJsonHeaders(),
-            body: JSON.stringify(payload)
-        });
-        Swal.fire({ ...swalConfig(), icon: 'success', title: 'User Assigned', text: result.message });
-        await Promise.all([loadTenants(), loadLookups()]);
-    } catch (error) {
-        Swal.fire({ ...swalConfig(), icon: 'error', title: 'Assignment Failed', text: error.message });
-    }
-}
-
-async function moveCategoryToTenant(event, dryRun) {
-    event.preventDefault();
-    const tenantId = document.getElementById('moveTenantId').value;
-    const payload = {
-        category_id: Number(document.getElementById('moveCategoryId').value),
-        dry_run: dryRun
-    };
-
-    try {
-        const result = await apiJson(`${window.laravelApiUrl}/api/tenants/${tenantId}/move-category`, {
-            method: 'POST',
-            headers: tenantJsonHeaders(),
-            body: JSON.stringify(payload)
-        });
-        Swal.fire({ ...swalConfig(), icon: 'success', title: dryRun ? 'Dry Run Complete' : 'Category Moved', text: result.message });
-        if (!dryRun) {
-            await Promise.all([loadTenants(), loadLookups()]);
-        }
-    } catch (error) {
-        Swal.fire({ ...swalConfig(), icon: 'error', title: dryRun ? 'Dry Run Failed' : 'Move Failed', text: error.message });
-    }
-}
-
-async function syncTenantData() {
-    const tenantId = document.getElementById('reportTenantId').value;
-    if (!tenantId) {
-        return;
-    }
-
-    try {
-        const result = await apiJson(`${window.laravelApiUrl}/api/tenants/${tenantId}/sync-derived`, {
-            method: 'POST',
-            headers: tenantHeaders()
-        });
-        Swal.fire({ ...swalConfig(), icon: 'success', title: 'Sync Complete', text: result.message });
-        await loadTenantReport(tenantId);
-    } catch (error) {
-        Swal.fire({ ...swalConfig(), icon: 'error', title: 'Sync Failed', text: error.message });
-    }
-}
-
 async function loadTenantReport(explicitTenantId = null) {
     const tenantId = explicitTenantId || document.getElementById('reportTenantId').value;
     if (!tenantId) {
         persistReportTenantId('');
+        document.getElementById('tenantReport').innerHTML = '';
+        Swal.fire({ ...swalConfig(), icon: 'warning', title: 'Select a tenant', text: 'Choose a tenant before loading the report.' });
         return;
     }
 
     document.getElementById('reportTenantId').value = tenantId;
     persistReportTenantId(tenantId);
+    document.getElementById('tenantReport').innerHTML = `
+        <div class="rounded-2xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900/20 px-6 py-8 text-center">
+            <div class="text-sm font-black text-gray-900 dark:text-white">Loading tenant report...</div>
+            <div class="mt-2 text-[10px] font-bold uppercase tracking-widest text-gray-400">Fetching distribution and feature data</div>
+        </div>
+    `;
 
     try {
         await loadFeatureSettings(tenantId);
         const result = await apiJson(`${window.laravelApiUrl}/api/tenants/${tenantId}/report`, {
             headers: tenantHeaders()
         });
-        const tenant = result.data.tenant;
+        const tenant = result.data?.tenant;
         const rows = result.data.distribution || [];
+        if (!tenant) {
+            throw new Error('Report response did not include tenant details.');
+        }
         document.getElementById('tenantReport').innerHTML = `
             <div class="mb-4">
                 <div class="font-black text-gray-900 dark:text-white">${escapeHtml(tenant.name)} (${escapeHtml(tenant.slug)})</div>
@@ -727,6 +534,12 @@ async function loadTenantReport(explicitTenantId = null) {
             </table>
         `;
     } catch (error) {
+        document.getElementById('tenantReport').innerHTML = `
+            <div class="rounded-2xl border border-rose-200 dark:border-rose-900/40 bg-rose-50 dark:bg-rose-950/20 px-6 py-8">
+                <div class="text-sm font-black text-rose-900 dark:text-rose-100">Report failed to load</div>
+                <div class="mt-2 text-xs text-rose-700 dark:text-rose-200">${escapeHtml(error.message || 'Unknown error')}</div>
+            </div>
+        `;
         Swal.fire({ ...swalConfig(), icon: 'error', title: 'Report Failed', text: error.message });
     }
 }
@@ -833,11 +646,27 @@ async function provisionInstance(event) {
             headers: tenantJsonHeaders(),
             body: JSON.stringify(payload)
         });
+        const stages = result.stages && typeof result.stages === 'object'
+            ? Object.entries(result.stages).map(([key, stage]) => ({ key, ...stage }))
+            : [];
+        const stageHtml = stages.length
+            ? `<div class="mt-4 space-y-2">${stages.map(stage => {
+                const tone = stage.status === 'configured' || stage.status === 'created' || stage.status === 'existing'
+                    ? 'bg-emerald-50 text-emerald-900 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-100 dark:border-emerald-800'
+                    : stage.status === 'partial' || stage.status === 'skipped'
+                        ? 'bg-amber-50 text-amber-900 border-amber-200 dark:bg-amber-950/40 dark:text-amber-100 dark:border-amber-800'
+                        : 'bg-rose-50 text-rose-900 border-rose-200 dark:bg-rose-950/40 dark:text-rose-100 dark:border-rose-800';
+                return `<div class="rounded border px-3 py-2 ${tone}">
+                    <div class="text-[10px] font-bold uppercase tracking-widest">${escapeHtml(stage.key)}</div>
+                    <div class="mt-1 text-sm">${escapeHtml(stage.message || '')}</div>
+                </div>`;
+            }).join('')}</div>`
+            : '';
         Swal.fire({
             ...swalConfig(),
             icon: 'success',
             title: 'Provisioning Complete',
-            html: `<div class="text-left"><p>${result.message}</p><pre class="mt-4 p-4 bg-gray-100 dark:bg-slate-800 rounded text-[10px] overflow-auto max-h-60">${escapeHtml(result.output)}</pre></div>`
+            html: `<div class="text-left text-slate-900 dark:text-slate-100"><p class="text-sm text-slate-900 dark:text-slate-100">${escapeHtml(result.message || '')}</p>${stageHtml}<pre class="mt-4 p-4 bg-gray-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 rounded text-[10px] overflow-auto max-h-60">${escapeHtml(result.output || '')}</pre></div>`
         });
         document.getElementById('provisionForm').reset();
     } catch (error) {

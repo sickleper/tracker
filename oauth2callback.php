@@ -110,6 +110,7 @@ function hydrateTrackerSessionFromAuth(array $data, string $fallbackEmail = ''):
         $_SESSION['role_id'],
         $_SESSION['is_office'],
         $_SESSION['user_id'],
+        $_SESSION['user_hash'],
         $_SESSION['user_name'],
         $_SESSION['user_email'],
         $_SESSION['email'],
@@ -120,6 +121,7 @@ function hydrateTrackerSessionFromAuth(array $data, string $fallbackEmail = ''):
 
     $_SESSION['api_token'] = $data['token'] ?? null;
     $_SESSION['user_id'] = $data['user_id'] ?? null;
+    $_SESSION['user_hash'] = $data['hash'] ?? null;
     $_SESSION['tenant_id'] = $data['tenant_id'] ?? null;
     $_SESSION['tenant_slug'] = $data['tenant_slug'] ?? null;
     $_SESSION['user_auth_id'] = $data['user_auth_id'] ?? null;

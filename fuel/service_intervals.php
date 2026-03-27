@@ -6,22 +6,18 @@ if (!isTrackerAuthenticated()) {
     exit;
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_service_info'])) {
-    $vehicleId = (int) $_POST['vehicle_id'];
-    $data = [
-        'service_mileage_threshold' => (int) $_POST['new_service_interval'],
-        'last_service_mileage' => (int) $_POST['last_service_mileage'],
-        'service_due' => !empty($_POST['service_due']) ? $_POST['service_due'] : null,
-    ];
-
-    $response = makeApiCall("/api/fuel/vehicles/{$vehicleId}", $data, 'PATCH');
-
-    if ($response && ($response['success'] ?? false)) {
-        echo "<script>Swal.fire({ icon:'success', title:'Service Info Updated', text:'Updated successfully for vehicle ID $vehicleId.' });</script>";
-    } else {
-        $msg = $response['message'] ?? 'Error updating vehicle.';
-        echo "<script>Swal.fire({ icon:'error', title:'Update Failed', text: '$msg' });</script>";
+function normalizeServiceDateValue($value): string
+{
+    if ($value === null) {
+        return '';
     }
+
+    $normalized = trim((string) $value);
+    if ($normalized === '' || $normalized === '0' || $normalized === '0000-00-00') {
+        return '';
+    }
+
+    return preg_match('/^\d{4}-\d{2}-\d{2}$/', $normalized) ? $normalized : '';
 }
 
 // ─── API Call ─────────────────────────────────────────────────────────────────
@@ -72,17 +68,17 @@ usort($vehicles, function ($a, $b) {
 <!-- Table -->
 <div class="table-container rounded-2xl border border-slate-200 dark:border-slate-800">
     <table id="service_table" class="w-full text-sm">
-        <thead>
+        <thead class="bg-slate-900 dark:bg-black text-white">
         <tr class="table-header-row">
-            <th class="px-4 py-4 text-left">Status</th>
-            <th class="px-4 py-4 text-left">Reg</th>
-            <th class="px-4 py-4 text-left">Make / Model</th>
-            <th class="px-4 py-4 text-left">Driver</th>
-            <th class="px-4 py-4 text-right">Last Svc</th>
-            <th class="px-4 py-4 text-right">Current</th>
-            <th class="px-4 py-4 text-right">Remaining</th>
-            <th class="px-4 py-4 text-left">Due Date</th>
-            <th class="px-4 py-4 text-left">Update Service Data</th>
+            <th class="px-4 py-4 text-left text-white text-[10px] font-black uppercase tracking-widest">Status</th>
+            <th class="px-4 py-4 text-left text-white text-[10px] font-black uppercase tracking-widest">Reg</th>
+            <th class="px-4 py-4 text-left text-white text-[10px] font-black uppercase tracking-widest">Make / Model</th>
+            <th class="px-4 py-4 text-left text-white text-[10px] font-black uppercase tracking-widest">Driver</th>
+            <th class="px-4 py-4 text-right text-white text-[10px] font-black uppercase tracking-widest">Last Svc</th>
+            <th class="px-4 py-4 text-right text-white text-[10px] font-black uppercase tracking-widest">Current</th>
+            <th class="px-4 py-4 text-right text-white text-[10px] font-black uppercase tracking-widest">Remaining</th>
+            <th class="px-4 py-4 text-left text-white text-[10px] font-black uppercase tracking-widest">Due Date</th>
+            <th class="px-4 py-4 text-left text-white text-[10px] font-black uppercase tracking-widest">Update Service Data</th>
         </tr>
         </thead>
         <tbody class="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900/20">
@@ -111,7 +107,7 @@ usort($vehicles, function ($a, $b) {
                 $milesLabel = number_format($milesLeft) . ' mi';
             }
             ?>
-            <tr class="<?= $status['row'] ?> hover:brightness-95 dark:hover:brightness-110 transition-all border-l-4
+            <tr id="service-row-<?= (int) $v['vehicle_id'] ?>" data-vehicle-id="<?= (int) $v['vehicle_id'] ?>" class="<?= $status['row'] ?> hover:brightness-95 dark:hover:brightness-110 transition-all border-l-4
                 <?= $status['priority'] === 1 ? 'border-l-red-500' : ($status['priority'] === 2 ? 'border-l-amber-500' : 'border-l-emerald-500') ?>">
                 <td class="px-4 py-4">
                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest ring-1 ring-inset <?= $status['badge'] ?>">
@@ -132,16 +128,35 @@ usort($vehicles, function ($a, $b) {
                     </div>
                 </td>
                 <td class="px-4 py-4">
-                    <form action="" method="post" class="flex items-center gap-2">
+                    <form action="update_service_interval.php" method="post" class="service-interval-form space-y-3 min-w-[320px]">
                         <input type="hidden" name="vehicle_id" value="<?= (int) $v['vehicle_id'] ?>">
-                        <div class="grid grid-cols-3 gap-2">
-                            <input type="number" name="last_service_mileage" min="0" value="<?= htmlspecialchars($v['last_service_mileage']) ?>" required placeholder="Last Mi" class="w-24 rounded-xl border border-slate-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-950 px-3 py-2 text-xs font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition">
-                            <input type="number" name="new_service_interval" min="0" value="<?= htmlspecialchars($v['service_mileage_threshold']) ?>" required placeholder="Interval" class="w-24 rounded-xl border border-slate-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-950 px-3 py-2 text-xs font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition">
-                            <input type="date" name="service_due" value="<?= htmlspecialchars($v['service_due'] ?? '') ?>" class="w-32 rounded-xl border border-slate-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-950 px-3 py-2 text-xs font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                        <div class="grid grid-cols-2 xl:grid-cols-4 gap-3">
+                            <label class="block">
+                                <span class="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Last Service</span>
+                                <input type="number" name="last_service_mileage" min="0" value="<?= htmlspecialchars($v['last_service_mileage']) ?>" required class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-950 px-3 py-2 text-xs font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                            </label>
+                            <label class="block">
+                                <span class="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Interval</span>
+                                <input type="number" name="new_service_interval" min="0" value="<?= htmlspecialchars($v['service_mileage_threshold']) ?>" required class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-950 px-3 py-2 text-xs font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                            </label>
+                            <label class="block">
+                                <span class="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Next Due</span>
+                                <input type="date" name="service_due" value="<?= htmlspecialchars(normalizeServiceDateValue($v['service_due'] ?? null)) ?>" class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-950 px-3 py-2 text-xs font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                            </label>
+                            <label class="block">
+                                <span class="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Completed On</span>
+                                <input type="date" name="service_completed_on" value="" class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-950 px-3 py-2 text-xs font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                            </label>
                         </div>
-                        <button type="submit" name="update_service_info" class="p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all shadow-md active:scale-95" title="Save Changes">
-                            <i class="fas fa-save"></i>
-                        </button>
+                        <div class="flex flex-col md:flex-row gap-3">
+                            <label class="block flex-1">
+                                <span class="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Work Notes</span>
+                                <input type="text" name="service_notes" value="" placeholder="Oil, filter, brakes, tyres..." class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-950 px-3 py-2 text-xs font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                            </label>
+                            <button type="submit" class="self-end px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all shadow-md active:scale-95 font-black uppercase tracking-widest text-[10px]" title="Save Changes">
+                                <i class="fas fa-save mr-1"></i> Save
+                            </button>
+                        </div>
                     </form>
                 </td>
             </tr>

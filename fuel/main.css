@@ -9,3 +9,185 @@
 }
 table.dataTable.no-footer { border-bottom: 1px solid #f3f4f6 !important; }
 .dark table.dataTable.no-footer { border-bottom: 1px solid #1e293b !important; }
+
+.fuel-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    margin-left: 0.25rem;
+    color: rgb(156 163 175);
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+
+.fuel-control {
+    width: 100%;
+    padding: 1rem;
+    border-radius: 1rem;
+    border: 1px solid rgb(229 231 235);
+    background: rgb(249 250 251);
+    color: rgb(17 24 39);
+    font-size: 0.875rem;
+    font-weight: 700;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.dark .fuel-control {
+    border-color: rgb(30 41 59);
+    background: rgb(15 23 42);
+    color: white;
+}
+
+.fuel-control-modal {
+    background: rgb(249 250 251);
+}
+
+.dark .fuel-control-modal {
+    background: rgb(2 6 23);
+}
+
+.fuel-control-textarea {
+    font-weight: 500;
+    line-height: 1.625;
+}
+
+.dark .fuel-control-textarea {
+    color: rgb(209 213 219);
+}
+
+.fuel-control-indigo:focus {
+    box-shadow: 0 0 0 2px rgb(99 102 241);
+}
+
+.fuel-control-red:focus {
+    box-shadow: 0 0 0 2px rgb(239 68 68);
+}
+
+.fuel-control-emerald:focus {
+    box-shadow: 0 0 0 2px rgb(16 185 129);
+}
+
+.fuel-action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 1rem;
+    color: white;
+    font-weight: 900;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    transition: all 0.2s ease;
+}
+
+.fuel-action-btn:active {
+    transform: scale(0.98);
+}
+
+.fuel-action-btn[disabled] {
+    opacity: 0.5;
+}
+
+.fuel-action-btn-indigo {
+    background: rgb(79 70 229);
+}
+
+.fuel-action-btn-indigo:hover {
+    background: rgb(5 150 105);
+}
+
+.dark .fuel-action-btn-indigo {
+    background: rgb(67 56 202);
+}
+
+.fuel-action-btn-red {
+    background: rgb(220 38 38);
+}
+
+.fuel-action-btn-red:hover {
+    background: rgb(185 28 28);
+}
+
+.fuel-action-btn-emerald {
+    background: rgb(5 150 105);
+}
+
+.fuel-action-btn-emerald:hover {
+    background: rgb(4 120 87);
+}
+
+.fuel-action-btn-cancel {
+    color: rgb(107 114 128);
+}
+
+.fuel-action-btn-cancel:hover {
+    background: rgb(243 244 246);
+}
+
+.dark .fuel-action-btn-cancel {
+    color: rgb(156 163 175);
+}
+
+.dark .fuel-action-btn-cancel:hover {
+    background: rgb(15 23 42);
+}
+
+.fuel-panel-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 220px;
+    padding: 1.5rem;
+    text-align: center;
+    color: rgb(107 114 128);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.fuel-panel-state.hidden {
+    display: none;
+}
+
+.dark .fuel-panel-state {
+    color: rgb(148 163 184);
+}
+
+.fuel-panel-state-error {
+    color: rgb(239 68 68);
+}
+
+.fuel-panel-state-muted {
+    color: rgb(156 163 175);
+}
+
+.dark .fuel-panel-state-muted {
+    color: rgb(100 116 139);
+}
+
+.fuel-section-copy {
+    margin-top: 0.5rem;
+    color: rgb(107 114 128);
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.5;
+}
+
+.dark .fuel-section-copy {
+    color: rgb(148 163 184);
+}
+
+.fuel-table-compact thead th {
+    padding-top: 0.875rem;
+    padding-bottom: 0.875rem;
+}
+
+.fuel-table-compact tbody td {
+    padding-top: 0.875rem;
+    padding-bottom: 0.875rem;
+}

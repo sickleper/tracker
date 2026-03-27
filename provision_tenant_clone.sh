@@ -3,10 +3,16 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SHARED_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-GIT_SAFE_ARGS=(-c "safe.directory=$SCRIPT_DIR" -c "safe.directory=$SCRIPT_DIR/.git")
+GIT_SAFE_ENV=(
+  "GIT_CONFIG_COUNT=2"
+  "GIT_CONFIG_KEY_0=safe.directory"
+  "GIT_CONFIG_VALUE_0=$SCRIPT_DIR"
+  "GIT_CONFIG_KEY_1=safe.directory"
+  "GIT_CONFIG_VALUE_1=$SCRIPT_DIR/.git"
+)
 
 git_in_repo() {
-  git "${GIT_SAFE_ARGS[@]}" -C "$SCRIPT_DIR" "$@"
+  env "${GIT_SAFE_ENV[@]}" git -C "$SCRIPT_DIR" "$@"
 }
 
 usage() {
@@ -61,9 +67,7 @@ if ! git_in_repo rev-parse --is-inside-work-tree >/dev/null 2>&1; then
 fi
 
 if [ -n "$(git_in_repo status --porcelain)" ]; then
-  echo "ERROR: Source checkout is dirty."
-  echo "Commit or stash local changes before provisioning a tenant clone."
-  exit 1
+  echo "WARNING: Source checkout is dirty. Provisioning will clone the committed branch state only."
 fi
 
 SOURCE_BRANCH="$(git_in_repo rev-parse --abbrev-ref HEAD)"
@@ -96,9 +100,14 @@ if [ -e "$TARGET_DIR" ]; then
 fi
 
 ORIGIN_URL="$(git_in_repo remote get-url origin 2>/dev/null || true)"
+CLONE_SOURCE="$SCRIPT_DIR"
 
-echo "Cloning $SCRIPT_DIR into $TARGET_DIR on branch $BRANCH..."
-git "${GIT_SAFE_ARGS[@]}" clone --branch "$BRANCH" "$SCRIPT_DIR" "$TARGET_DIR"
+if [ -n "$ORIGIN_URL" ]; then
+  CLONE_SOURCE="$ORIGIN_URL"
+fi
+
+echo "Cloning $CLONE_SOURCE into $TARGET_DIR on branch $BRANCH..."
+env "${GIT_SAFE_ENV[@]}" git clone --branch "$BRANCH" "$CLONE_SOURCE" "$TARGET_DIR"
 
 if [ -n "$ORIGIN_URL" ]; then
   git -C "$TARGET_DIR" remote set-url origin "$ORIGIN_URL"
