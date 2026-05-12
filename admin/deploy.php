@@ -1,6 +1,7 @@
 <?php
 $pageTitle = "Tracker Deploy";
 require_once '../config.php';
+require_once 'git_runtime.php';
 
 if (!isTrackerAuthenticated()) {
     header('Location: ../oauth2callback.php');
@@ -17,11 +18,11 @@ if (!$isAdminUser) {
 
 $repoDir = realpath(dirname(__DIR__)) ?: dirname(__DIR__);
 $allowedBranches = ['main', 'master'];
-$repoConfigured = trim((string) @shell_exec('git -C ' . escapeshellarg($repoDir) . ' rev-parse --is-inside-work-tree 2>/dev/null')) === 'true';
-$currentBranch = $repoConfigured ? trim((string) @shell_exec('cd ' . escapeshellarg($repoDir) . ' && git rev-parse --abbrev-ref HEAD 2>/dev/null')) : '';
-$currentCommit = $repoConfigured ? trim((string) @shell_exec('cd ' . escapeshellarg($repoDir) . ' && git rev-parse --short HEAD 2>/dev/null')) : '';
-$lastCommitMessage = $repoConfigured ? trim((string) @shell_exec('cd ' . escapeshellarg($repoDir) . ' && git log -1 --pretty=%s 2>/dev/null')) : '';
-$workingTreeDirty = $repoConfigured ? trim((string) @shell_exec('cd ' . escapeshellarg($repoDir) . ' && git status --porcelain 2>/dev/null')) !== '' : false;
+$repoConfigured = trackerGitIsConfigured($repoDir);
+$currentBranch = $repoConfigured ? trackerGitOutput($repoDir, 'rev-parse --abbrev-ref HEAD') : '';
+$currentCommit = $repoConfigured ? trackerGitOutput($repoDir, 'rev-parse --short HEAD') : '';
+$lastCommitMessage = $repoConfigured ? trackerGitOutput($repoDir, 'log -1 --pretty=%s') : '';
+$workingTreeDirty = $repoConfigured ? trackerGitOutput($repoDir, 'status --porcelain') !== '' : false;
 $logDir = $repoDir . '/storage/deploy_logs';
 $latestLog = '';
 

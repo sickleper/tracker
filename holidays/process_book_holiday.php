@@ -20,6 +20,13 @@ if (!isTrackerAuthenticated()) {
 
 $sessionUserId = (int) ($_SESSION['user_id'] ?? 0);
 $requestedUserId = (int) ($_POST['user_id'] ?? $sessionUserId);
+$isAdmin = isTrackerAdminUser();
+
+if (!$isAdmin && $requestedUserId !== $sessionUserId) {
+    http_response_code(403);
+    echo json_encode(['status' => 'error', 'message' => 'Admin access required to book leave for another user']);
+    exit;
+}
 
 if ($sessionUserId <= 0) {
     http_response_code(401);

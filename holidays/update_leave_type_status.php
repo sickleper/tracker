@@ -9,6 +9,12 @@ if (!isTrackerAuthenticated()) {
     exit();
 }
 
+if (!isTrackerAdminUser()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Admin access required']);
+    exit();
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'], $_POST['is_enabled'])) {
     $id = (int) $_POST['id'];
     $isEnabled = (int) $_POST['is_enabled'];

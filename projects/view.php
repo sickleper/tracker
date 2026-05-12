@@ -105,7 +105,7 @@ if ($catRes && isset($catRes['data'])) {
                             <span class="text-[9px] font-black uppercase tracking-widest text-indigo-300">Click icon box to toggle status</span>
                         </div>
                     </div>
-                    <div class="flex gap-2">
+                    <div class="flex gap-2 flex-wrap justify-end">
                         <button onclick="syncWithTemplate()" class="px-4 py-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-200 border border-indigo-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
                             <i class="fas fa-sync-alt mr-1"></i> Sync with Template
                         </button>
@@ -338,22 +338,86 @@ if ($catRes && isset($catRes['data'])) {
     });
 
     let currentProjectData = null;
+    let currentMilestones = [];
+    function resolveMilestonesFromProject(projectData) {
+        if (!projectData || typeof projectData !== 'object') {
+            return [];
+        }
+
+        if (Array.isArray(projectData.milestones)) {
+            return projectData.milestones;
+        }
+
+        if (Array.isArray(projectData.project_milestones)) {
+            return projectData.project_milestones;
+        }
+
+        return [];
+    }
+
+    function renderProjectLoadError(message) {
+        const container = $('#milestonesContainer');
+        container.html(`
+            <div class="text-center py-12 px-6 bg-red-50 dark:bg-red-950/20 rounded-3xl border border-red-200 dark:border-red-900/40">
+                <div class="w-14 h-14 bg-white dark:bg-slate-900 rounded-2xl border border-red-200 dark:border-red-900/40 flex items-center justify-center mx-auto mb-4 text-red-500">
+                    <i class="fas fa-triangle-exclamation text-xl"></i>
+                </div>
+                <h4 class="text-sm font-black text-red-700 dark:text-red-300 uppercase tracking-tight mb-2">Unable To Load Project Milestones</h4>
+                <p class="text-xs text-red-600 dark:text-red-300/80 max-w-sm mx-auto">${message || 'The project request failed. Refresh and try again.'}</p>
+            </div>
+        `);
+    }
+
     function loadProjectDetails() {
         $.ajax({
             url: `${window.laravelApiUrl}/api/projects/${projectId}`,
             type: 'GET',
             headers: { 'Authorization': 'Bearer ' + window.apiToken },
             success: function(res) {
-                if (res.success) {
-                    currentProjectData = res.data;
-                    renderHeader(currentProjectData);
-                    renderCoreInfo(currentProjectData);
-                    renderMilestones(currentProjectData.milestones);
-                    renderMembers(currentProjectData.members);
-                    renderFiles(currentProjectData.files);
-                    renderActivity(currentProjectData.activities);
-                    renderEmails(currentProjectData.email_leads);
+                if (!res || !res.success || !res.data) {
+                    renderProjectLoadError(res && res.message ? res.message : 'Project response was invalid.');
+                    return;
                 }
+
+                currentProjectData = res.data;
+                renderHeader(currentProjectData);
+                renderCoreInfo(currentProjectData);
+                renderMembers(currentProjectData.members);
+                renderFiles(currentProjectData.files);
+                renderActivity(currentProjectData.activities);
+                renderEmails(currentProjectData.email_leads);
+
+                const milestones = resolveMilestonesFromProject(currentProjectData);
+                if (milestones.length > 0) {
+                    renderMilestones(milestones);
+                    return;
+                }
+
+                // Fallback: some environments return project payload without eager-loaded milestones.
+                $.ajax({
+                    url: `${window.laravelApiUrl}/api/projects/milestones`,
+                    type: 'GET',
+                    data: { project_id: projectId },
+                    headers: { 'Authorization': 'Bearer ' + window.apiToken },
+                    success: function(milestoneRes) {
+                        const fallbackMilestones = (milestoneRes && milestoneRes.success && Array.isArray(milestoneRes.data))
+                            ? milestoneRes.data
+                            : [];
+                        renderMilestones(fallbackMilestones);
+                    },
+                    error: function() {
+                        renderMilestones([]);
+                    }
+                });
+            },
+            error: function(xhr) {
+                let message = 'The request failed. Please refresh and try again.';
+                if (xhr && xhr.status === 401) {
+                    message = 'Authentication expired. Please sign out and sign back in.';
+                } else if (xhr && xhr.status === 403) {
+                    message = 'Access denied for this project.';
+                }
+                renderProjectLoadError(message);
             }
         });
     }
@@ -428,9 +492,21 @@ if ($catRes && isset($catRes['data'])) {
             .css('stroke-dashoffset', offset);
     }
 
+    function normalizeDateInputValue(value) {
+        if (!value) return '';
+        if (typeof value === 'object' && value.date) {
+            value = value.date;
+        }
+        if (typeof value !== 'string') return '';
+        if (value.includes('T')) return value.split('T')[0];
+        if (value.includes(' ')) return value.split(' ')[0];
+        return value;
+    }
+
     function renderMilestones(milestones) {
+        currentMilestones = Array.isArray(milestones) ? milestones : [];
         const container = $('#milestonesContainer');
-        if (!milestones || milestones.length === 0) {
+        if (!currentMilestones.length) {
             container.html(`
                 <div class="text-center py-12 px-6 bg-gray-50 dark:bg-slate-950/50 rounded-3xl border-2 border-dashed border-gray-100 dark:border-slate-800">
                     <div class="w-16 h-16 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 flex items-center justify-center mx-auto mb-4 text-indigo-500">
@@ -447,7 +523,7 @@ if ($catRes && isset($catRes['data'])) {
         }
 
         let html = '';
-        milestones.forEach(m => {
+        currentMilestones.forEach(m => {
             const isComplete = m.status === 'complete';
             const statusClass = isComplete ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700';
             const tooltip = isComplete ? 'Click to mark as Incomplete' : 'Click to mark as Complete';
@@ -492,16 +568,17 @@ if ($catRes && isset($catRes['data'])) {
     }
     function syncWithTemplate() {
         Swal.fire({
-            title: 'Sync Milestones?',
-            text: 'This will add missing milestones from the category template. Do you also want to clear existing milestones?',
+            title: 'Sync Project Milestones',
+            text: 'Add missing milestones from this category template. Choose whether to keep or replace existing milestones.',
             icon: 'question',
             showCancelButton: true,
             showDenyButton: true,
-            confirmButtonText: 'Yes, Clear & Sync',
-            denyButtonText: 'Sync (Keep Existing)',
+            confirmButtonText: 'Replace Existing',
+            denyButtonText: 'Keep Existing',
             cancelButtonText: 'Cancel',
             confirmButtonColor: '#ef4444',
             denyButtonColor: '#6366f1',
+            reverseButtons: true,
             theme: getSwalTheme()
         }).then((result) => {
             if (result.isConfirmed || result.isDenied) {
@@ -602,14 +679,14 @@ if ($catRes && isset($catRes['data'])) {
     }
 
     window.editMilestone = function(id) {
-        // Find milestone data from current project state
-        const milestone = currentProjectData.milestones.find(m => m.id == id);
+        // Find milestone data from the currently rendered list.
+        const milestone = currentMilestones.find(m => String(m.id) === String(id));
         if (!milestone) return;
 
         $('#milestoneModalTitle').text('Edit Milestone');
         $('#milestoneId').val(milestone.id);
         $('#milestoneTitle').val(milestone.milestone_title);
-        $('#milestoneEndDate').val(milestone.end_date);
+        $('#milestoneEndDate').val(normalizeDateInputValue(milestone.end_date));
         $('#milestoneCost').val(milestone.cost);
         $('#milestoneSummary').val(milestone.summary);
         $('#milestoneModal').removeClass('hidden');

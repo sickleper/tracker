@@ -1,5 +1,6 @@
 <?php
 require_once '../config.php';
+require_once 'git_runtime.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -25,38 +26,43 @@ $userName = $userInfo['name'];
 $userHome = $userInfo['dir'];
 $repoDir = realpath(dirname(__DIR__)) ?: dirname(__DIR__);
 
-if (trim((string) shell_exec('git -C ' . escapeshellarg($repoDir) . ' rev-parse --is-inside-work-tree 2>/dev/null')) !== 'true') {
+if (!trackerGitIsConfigured($repoDir)) {
     echo json_encode(['success' => false, 'message' => 'Git not configured']);
     exit();
 }
 
-// Fetch from remote - force HOME and explicitly set GIT_SSH_COMMAND to use the correct config
-$sshConfig = $userHome . '/.ssh/config';
-$gitSshCommand = "ssh -F " . escapeshellarg($sshConfig);
-
-$cmd = "export HOME=" . escapeshellarg($userHome) . " && export GIT_SSH_COMMAND=" . escapeshellarg($gitSshCommand) . " && cd " . escapeshellarg($repoDir) . " && git fetch origin 2>&1";
+// Fetch from remote using the web user's SSH config when present, otherwise the repo-level SSH config.
+$cmd = trackerGitCommand($repoDir, 'fetch origin', trackerGitSshEnv($repoDir, $userHome)) . ' 2>&1';
 exec($cmd, $fetchOutput, $fetchExitCode);
 
 if ($fetchExitCode !== 0) {
+    $sshDiagnostics = trackerGitSshDiagnostics($repoDir, $userHome);
     echo json_encode([
         'success' => false, 
         'message' => 'Failed to fetch from remote', 
-        'output' => implode("\n", $fetchOutput)
+        'output' => implode("\n", $fetchOutput),
+        'ssh_diagnostics' => $sshDiagnostics,
     ]);
     exit();
 }
 
 $branch = trim((string) ($_GET['branch'] ?? 'main'));
-$localCommit = trim((string) shell_exec("cd " . escapeshellarg($repoDir) . " && git rev-parse $branch"));
-$remoteCommit = trim((string) shell_exec("cd " . escapeshellarg($repoDir) . " && git rev-parse origin/$branch"));
+if (!preg_match('/^[A-Za-z0-9._\/-]+$/', $branch)) {
+    http_response_code(422);
+    echo json_encode(['success' => false, 'message' => 'Invalid branch']);
+    exit();
+}
 
-$isAhead = (int) shell_exec("cd " . escapeshellarg($repoDir) . " && git rev-list --count origin/$branch..$branch");
-$isBehind = (int) shell_exec("cd " . escapeshellarg($repoDir) . " && git rev-list --count $branch..origin/$branch");
+$localCommit = trackerGitOutput($repoDir, 'rev-parse ' . escapeshellarg($branch));
+$remoteCommit = trackerGitOutput($repoDir, 'rev-parse ' . escapeshellarg('origin/' . $branch));
+
+$isAhead = (int) trackerGitOutput($repoDir, 'rev-list --count ' . escapeshellarg('origin/' . $branch . '..' . $branch));
+$isBehind = (int) trackerGitOutput($repoDir, 'rev-list --count ' . escapeshellarg($branch . '..origin/' . $branch));
 
 // Get remote commit message if update available
 $remoteMessage = '';
 if ($isBehind > 0) {
-    $remoteMessage = trim((string) shell_exec("cd " . escapeshellarg($repoDir) . " && git log -1 --pretty=%s origin/$branch"));
+    $remoteMessage = trackerGitOutput($repoDir, 'log -1 --pretty=%s ' . escapeshellarg('origin/' . $branch));
 }
 
 echo json_encode([

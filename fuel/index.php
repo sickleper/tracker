@@ -4,7 +4,6 @@ require_once '../config.php';
 require_once '../tracker_data.php';
 require_once __DIR__ . '/partials/helpers.php';
 require_once __DIR__ . '/daily_checks_repository.php';
-require_once __DIR__ . '/../receipt_scanner/link_helper.php';
 
 $pageCssFiles = [rtrim(trackerAppUrl(), '/') . '/fuel/main.css?v=' . time()];
 
@@ -25,31 +24,7 @@ $vRes = makeApiCall('/api/fuel/vehicles');
 $uRes = makeApiCall('/api/users', ['team_only' => 1]); // Fetch all non-client users for the registry
 $driversOnlyRes = makeApiCall('/api/users', ['drivers_only' => 1, 'team_only' => 1]); // For dropdowns
 
-$fuelScannerPublicMileageLink = '';
-$currentFuelScannerVehicle = null;
-$currentFuelScannerUserId = (int) ($_SESSION['user_id'] ?? 0);
-$currentFuelScannerUserName = trim((string) ($_SESSION['user_name'] ?? ''));
 $fuelVehicles = $vRes['vehicles'] ?? [];
-foreach ($fuelVehicles as $vehicle) {
-    if ((int) ($vehicle['user_id'] ?? 0) === $currentFuelScannerUserId) {
-        $currentFuelScannerVehicle = $vehicle;
-        break;
-    }
-}
-
-if ($currentFuelScannerUserId > 0 && is_array($currentFuelScannerVehicle) && !empty($currentFuelScannerVehicle['license_plate'])) {
-    $currentUserHash = trim((string) ($_SESSION['user_hash'] ?? ''));
-    if ($currentUserHash !== '') {
-        $fuelScannerPublicMileageLink = receiptScannerBuildDriverMileageLink(
-            rtrim(trackerAppUrl(), '/') . '/receipt_scanner/driver_mileage.php',
-            $currentUserHash,
-            (string) $currentFuelScannerVehicle['license_plate'],
-            time() + (7 * 24 * 60 * 60),
-            (int) ($_SESSION['tenant_id'] ?? 0),
-            $currentFuelScannerUserName
-        );
-    }
-}
 
 $fuelPageData = [
     'drivers' => $uRes['users'] ?? [],
@@ -87,9 +62,6 @@ include '../nav.php';
             <button data-tab="reports" class="tab-btn border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-black text-xs uppercase tracking-widest flex items-center gap-2 transition-all">
                 <i class="fas fa-chart-pie"></i> Reports
             </button>
-            <button data-tab="scanner" class="tab-btn border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-black text-xs uppercase tracking-widest flex items-center gap-2 transition-all">
-                <i class="fas fa-camera-retro"></i> Scanner
-            </button>
         </nav>
     </div>
 
@@ -99,7 +71,6 @@ include '../nav.php';
         <?php include __DIR__ . '/partials/tab_maintenance.php'; ?>
         <?php include __DIR__ . '/partials/tab_fleet.php'; ?>
         <?php include __DIR__ . '/partials/tab_reports.php'; ?>
-        <?php include __DIR__ . '/partials/tab_scanner.php'; ?>
     </div>
 </div>
 

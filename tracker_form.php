@@ -60,11 +60,11 @@ if ($id) {
 }
 
 // Get active users for assignment from API
-$usersResponse = makeApiCall("/api/users/active");
+$usersResponse = makeApiCall('/api/users', ['team_only' => 1]);
 $users = ($usersResponse && ($usersResponse['success'] ?? false)) ? $usersResponse['users'] : [];
 
 // Fetch Subcontractors for Tagging from API
-$subcontractorsResponse = makeApiCall("/api/users/subcontractors");
+$subcontractorsResponse = makeApiCall('/api/subcontractors');
 $subcontractors = ($subcontractorsResponse && ($subcontractorsResponse['success'] ?? false)) ? $subcontractorsResponse['subcontractors'] : [];
 
 $priorityOptions = ['Low', 'Medium', 'High', 'Urgent', 'Emergency'];
@@ -261,7 +261,9 @@ if (!$isEmbedded) {
 
                     <?php if ($id && !empty($wo['poNumber'])): ?>
                         <?php
-                        $attachmentsResponse = makeApiCall("/api/tasks/{$id}/attachments");
+                        $poNumber = $wo['poNumber'] ?? '';
+                        $encodedPoNumber = rawurlencode((string)$poNumber);
+                        $attachmentsResponse = makeApiCall("/api/attachments/by-po/{$encodedPoNumber}");
                         $existingFiles = ($attachmentsResponse && ($attachmentsResponse['success'] ?? false)) ? $attachmentsResponse['attachments'] : [];
                         if (!empty($existingFiles)):
                             ?>

@@ -7,13 +7,23 @@ if (!isTrackerAuthenticated()) {
     exit;
 }
 
+if (!isTrackerAdminUser()) {
+    header('Location: index.php');
+    exit;
+}
+
 include '../header.php' ;
 include '../nav.php' ;
 
-$vehicleId = $_GET['vehicle_id'] ?? null;
+$vehicleId = (int) ($_GET['vehicle_id'] ?? 0);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_service_info'])) {
-    $vId = $_POST['vehicle_id'];
+    $vId = (int) ($_POST['vehicle_id'] ?? 0);
+    if ($vId <= 0) {
+        echo "<script>Swal.fire({ icon:'error', title:'Error', text:'Vehicle reference is invalid.' });</script>";
+        exit;
+    }
+
     $data = [
         'tax_disk_ref' => $_POST['tax_disk_ref'] ?? null,
         'tax_issue_date' => $_POST['tax_issue_date'] ?? null,

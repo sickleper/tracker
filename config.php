@@ -232,8 +232,8 @@ if (!function_exists('trackerTenantSlug')) {
                 'Accept: application/json',
                 'Authorization: Bearer ' . $apiToken,
             ],
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => false,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
             CURLOPT_TIMEOUT => 10,
         ]);
 
@@ -279,20 +279,22 @@ if (!function_exists('trackerTenantSlug')) {
             return $resolved;
         }
 
-        $candidates = [
-            $_SERVER['HTTP_X_TENANT_SLUG'] ?? null,
-            $_GET['tenant_slug'] ?? null,
-            $_POST['tenant_slug'] ?? null,
-            $_SESSION['tenant_slug'] ?? null,
-            $_COOKIE['tenant_slug'] ?? null,
-            $_SERVER['TENANT_SLUG'] ?? null,
-            $_ENV['TENANT_SLUG'] ?? null,
-        ];
+        if (isTrackerAuthenticated()) {
+            $candidates = [
+                $_SESSION['tenant_slug'] ?? null,
+                $_SERVER['TENANT_SLUG'] ?? null,
+                $_ENV['TENANT_SLUG'] ?? null,
+            ];
+        } else {
+            $candidates = [
+                $_SERVER['TENANT_SLUG'] ?? null,
+                $_ENV['TENANT_SLUG'] ?? null,
+            ];
+        }
 
         foreach ($candidates as $candidate) {
             $candidate = trim((string) $candidate);
             if ($candidate !== '') {
-                $_SESSION['tenant_slug'] = $candidate;
                 $resolved = $candidate;
                 return $resolved;
             }
@@ -310,6 +312,40 @@ if (!function_exists('trackerTenantSlug')) {
 
         $resolved = '';
         return $resolved;
+    }
+}
+
+if (!function_exists('trackerTenantId')) {
+    function trackerTenantId(bool $refresh = false): ?int
+    {
+        static $resolved = null;
+
+        if ($refresh) {
+            $resolved = null;
+        }
+
+        $sessionTenantId = (int) ($_SESSION['tenant_id'] ?? 0);
+        if ($sessionTenantId > 0) {
+            $resolved = $sessionTenantId;
+            return $resolved;
+        }
+
+        if ($resolved !== null) {
+            return $resolved > 0 ? $resolved : null;
+        }
+
+        if (function_exists('makeApiCall')) {
+            $userResponse = makeApiCall('/api/user');
+            $tenantId = (int) ($userResponse['data']['tenant_id'] ?? $userResponse['tenant_id'] ?? 0);
+            if ($tenantId > 0) {
+                $_SESSION['tenant_id'] = $tenantId;
+                $resolved = $tenantId;
+                return $resolved;
+            }
+        }
+
+        $resolved = 0;
+        return null;
     }
 }
 

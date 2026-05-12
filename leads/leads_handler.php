@@ -136,7 +136,11 @@ try {
 
         case 'submit_public_booking':
             $data = $_POST;
-            unset($data['action']);
+            unset($data['action'], $data['tenant_slug']);
+            $tenantSlug = function_exists('trackerTenantSlug') ? trackerTenantSlug() : trim((string) ($_SERVER['TENANT_SLUG'] ?? $_ENV['TENANT_SLUG'] ?? ''));
+            if ($tenantSlug !== '') {
+                $data['tenant_slug'] = $tenantSlug;
+            }
             $response = makeApiCall('/api/public/leads', $data, 'POST');
             echo json_encode($response);
             break;

@@ -1,0 +1,57 @@
+[
+    {
+        "id": "daily_check_69c9970165f638.47694899",
+        "date": "2026-03-29",
+        "vehicle_id": 5,
+        "vehicle_label": "171-G-505",
+        "checked_by": "john lawlor",
+        "checked_by_id": 36,
+        "status": "pass",
+        "notes": "",
+        "checklist": {
+            "tyres": "pass",
+            "lights": "pass",
+            "mirrors": "pass",
+            "brakes": "pass",
+            "fluids": "pass",
+            "bodywork": "pass",
+            "safety_kit": "pass"
+        },
+        "failed_items": [],
+        "defect_created": false,
+        "severity": "low",
+        "off_road": false,
+        "safety_defect_id": null,
+        "updated_at": "2026-03-29T21:17:53+00:00",
+        "created_at": "2026-03-29T21:17:53+00:00"
+    },
+    {
+        "id": "daily_check_69c9996a830cc3.87513769",
+        "date": "2026-03-29",
+        "vehicle_id": 1,
+        "vehicle_label": "151-D-101",
+        "checked_by": "john lawlor",
+        "checked_by_id": 36,
+        "status": "fail",
+        "notes": "",
+        "checklist": {
+            "tyres": "pass",
+            "lights": "fail",
+            "mirrors": "pass",
+            "brakes": "pass",
+            "fluids": "pass",
+            "bodywork": "fail",
+            "safety_kit": "pass"
+        },
+        "failed_items": [
+            "Lights",
+            "Bodywork"
+        ],
+        "defect_created": true,
+        "severity": "critical",
+        "off_road": true,
+        "safety_defect_id": "",
+        "updated_at": "2026-03-29T21:28:10+00:00",
+        "created_at": "2026-03-29T21:28:10+00:00"
+    }
+]

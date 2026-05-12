@@ -9,6 +9,7 @@ $isFuel = (strpos($_SERVER['REQUEST_URI'], '/fuel/') !== false);
 $isToolInventory = (strpos($_SERVER['REQUEST_URI'], '/tool_inventory/') !== false);
 $isAdmin = (strpos($_SERVER['REQUEST_URI'], '/admin/') !== false);
 $isBackup = (strpos($_SERVER['REQUEST_URI'], '/backup/') !== false);
+$isAdminCategoriesTab = $isAdmin && $currentPage === 'index.php' && (($_GET['tab'] ?? '') === 'categories');
 
 // Robust Base path calculation based on script's location relative to DOCUMENT_ROOT
 $docRoot = $_SERVER['DOCUMENT_ROOT'];
@@ -31,11 +32,17 @@ $moduleHolidaysEnabled = featureEnabled('module_holidays_enabled');
 $moduleTimesheetsEnabled = featureEnabled('module_timesheets_enabled');
 $moduleTicketsEnabled = featureEnabled('module_tickets_enabled');
 $canUseTenantAdminTools = function_exists('trackerCanUseTenantAdminTools') && trackerCanUseTenantAdminTools();
+$canUseSharedMaintenanceTools = function_exists('trackerIsPrimaryApp') && trackerIsPrimaryApp();
 $trackerTenantSlug = function_exists('trackerTenantSlug') ? trackerTenantSlug() : '';
 $trackerAppModeLabel = function_exists('trackerIsPrimaryApp') && trackerIsPrimaryApp() ? 'Primary App' : 'Tenant App';
 $trackerAppModeClass = $trackerAppModeLabel === 'Primary App'
     ? 'bg-emerald-500 text-white'
     : 'bg-amber-300 text-slate-950';
+$navDisplayName = trim((string) ($_SESSION['user_name'] ?? ''));
+if ($navDisplayName === '') {
+    $sessionEmail = trim((string) ($_SESSION['email'] ?? $_SESSION['user_email'] ?? ''));
+    $navDisplayName = $sessionEmail !== '' ? preg_replace('/@.*/', '', $sessionEmail) : 'User';
+}
 ?>
 <!-- User/System Top Bar -->
 <div class="bg-gray-900/50 dark:bg-black/20 backdrop-blur-sm border-b border-white/5 py-2 no-print">
@@ -65,7 +72,7 @@ $trackerAppModeClass = $trackerAppModeLabel === 'Primary App'
             <!-- User Info -->
             <div class="hidden sm:flex items-center gap-2 text-[9px] font-black uppercase tracking-widest">
                 <i class="fas fa-user-circle opacity-50"></i>
-                <span>Logged in: <span class="text-white"><?php echo htmlspecialchars($_SESSION['user_name'] ?? 'User'); ?></span></span>
+                <span>Logged in: <span class="text-white"><?php echo htmlspecialchars($navDisplayName); ?></span></span>
                 <?php if ($isAdmin): ?>
                     <span class="ml-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[8px] font-black italic tracking-tighter shadow-sm <?php echo $trackerAppModeClass; ?>">
                         <i class="fas fa-layer-group"></i>
@@ -112,9 +119,21 @@ $trackerAppModeClass = $trackerAppModeLabel === 'Primary App'
                     </a>
                     <?php endif; ?>
 
-                    <a href="<?php echo $base; ?>projects/projects_list.php" class="px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest <?php echo (strpos($_SERVER['REQUEST_URI'], '/projects/') !== false) ? 'bg-indigo-800 text-white' : 'text-indigo-100 hover:bg-indigo-600'; ?> transition-all">
-                        <i class="fas fa-project-diagram mr-1"></i> Projects
-                    </a>
+                    <div class="relative group">
+                        <button class="px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest <?php echo ((strpos($_SERVER['REQUEST_URI'], '/projects/') !== false) || $isAdminCategoriesTab) ? 'bg-indigo-800 text-white' : 'text-indigo-100 hover:bg-indigo-600'; ?> transition-all flex items-center gap-1">
+                            <i class="fas fa-project-diagram mr-1"></i> Projects <i class="fas fa-chevron-down text-[8px] opacity-50 group-hover:rotate-180 transition-transform"></i>
+                        </button>
+                        <div class="absolute left-0 w-64 mt-0 origin-top-left bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-100 dark:border-slate-800 divide-y divide-gray-50 dark:divide-slate-800 overflow-hidden opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto transition-all duration-200 z-50">
+                            <a href="<?php echo $base; ?>projects/projects_list.php" class="block px-4 py-3 text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                                <i class="fas fa-list-ul mr-2 opacity-50"></i> Projects Board
+                            </a>
+                            <?php if (isTrackerAdminUser()): ?>
+                            <a href="<?php echo $base; ?>admin/index.php?tab=categories" class="block px-4 py-3 text-xs font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors">
+                                <i class="fas fa-list-check mr-2 opacity-50"></i> Milestone Templates
+                            </a>
+                            <?php endif; ?>
+                        </div>
+                    </div>
 
                     <div class="relative group">
                         <button class="px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest <?php echo (strpos($_SERVER['REQUEST_URI'], '/proposals/') !== false) ? 'bg-indigo-800 text-white' : 'text-indigo-100 hover:bg-indigo-600'; ?> transition-all flex items-center gap-1">
@@ -126,7 +145,7 @@ $trackerAppModeClass = $trackerAppModeLabel === 'Primary App'
                                 <i class="fas fa-list-ul mr-2 opacity-50"></i> Proposals Registry
                             </a>
                     <?php if (isTrackerSuperAdmin()): ?>
-                            <a href="<?php echo $propBase; ?>template_manager.php" class="block px-4 py-3 text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                            <a href="<?php echo $propBase; ?>template_manager.php" class="block px-4 py-3 text-xs font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors">
                                 <i class="fas fa-layer-group mr-2 opacity-50"></i> Template Manager
                             </a>
                             <?php endif; ?>
@@ -170,7 +189,7 @@ $trackerAppModeClass = $trackerAppModeLabel === 'Primary App'
                     </a>
                     <?php endif; ?>
 
-                    <a href="<?php echo $base; ?>receipt_scanner/index.php" class="px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest <?php echo (strpos($_SERVER['REQUEST_URI'], '/receipt_scanner/') !== false) ? 'bg-indigo-800 text-white' : 'text-indigo-100 hover:bg-indigo-600'; ?> transition-all">
+                    <a href="<?php echo $base; ?>ai_scanner/index.php" class="px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest <?php echo ((strpos($_SERVER['REQUEST_URI'], '/ai_scanner/') !== false) || (strpos($_SERVER['REQUEST_URI'], '/receipt_scanner/') !== false)) ? 'bg-indigo-800 text-white' : 'text-indigo-100 hover:bg-indigo-600'; ?> transition-all">
                         <i class="fas fa-receipt mr-1"></i> Receipt Scanner
                     </a>
 
@@ -199,12 +218,26 @@ $trackerAppModeClass = $trackerAppModeLabel === 'Primary App'
                                 <i class="fas fa-user-shield mr-1"></i> Admin <i class="fas fa-chevron-down text-[8px] opacity-50 group-hover:rotate-180 transition-transform"></i>
                             </button>
                             <div class="absolute left-0 w-56 mt-0 origin-top-left bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-100 dark:border-slate-800 divide-y divide-gray-50 dark:divide-slate-800 overflow-hidden opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto transition-all duration-200 z-50">
-                                <a href="<?php echo $base; ?>admin/index.php" class="block px-4 py-3 text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-                                    <i class="fas fa-cog mr-2 opacity-50"></i> System Settings
+                                <a href="<?php echo $base; ?>admin/index.php?tab=categories" class="block px-4 py-3 text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                                    <i class="fas fa-folder-tree mr-2 opacity-50"></i> Categories
                                 </a>
+                                <a href="<?php echo $base; ?>admin/index.php?tab=users" class="block px-4 py-3 text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                                    <i class="fas fa-users mr-2 opacity-50"></i> User Management
+                                </a>
+                                <a href="<?php echo $base; ?>admin/index.php?tab=global-settings" class="block px-4 py-3 text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                                    <i class="fas fa-cogs mr-2 opacity-50"></i> Global Settings
+                                </a>
+                                <a href="<?php echo $base; ?>admin/index.php?tab=leave-types" class="block px-4 py-3 text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                                    <i class="fas fa-calendar-alt mr-2 opacity-50"></i> Leave Types
+                                </a>
+                                <?php if ($canUseSharedMaintenanceTools): ?>
+                                <a href="<?php echo $base; ?>admin/index.php?tab=maintenance" class="block px-4 py-3 text-xs font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors">
+                                    <i class="fas fa-tools mr-2 opacity-50"></i> Maintenance
+                                </a>
+                                <?php endif; ?>
                                 <?php if (isTrackerSuperAdmin()): ?>
-                                <a href="<?php echo $base; ?>admin/profile.php" class="block px-4 py-3 text-xs font-black uppercase tracking-widest text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-900/20 transition-colors">
-                                    <i class="fas fa-id-card mr-2 opacity-50"></i> Admin Profile
+                                <a href="<?php echo $base; ?>admin/api_docs.php" class="block px-4 py-3 text-xs font-black uppercase tracking-widest text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-900/20 transition-colors">
+                                    <i class="fas fa-book mr-2 opacity-50"></i> API Docs
                                 </a>
                                 <a href="<?php echo $base; ?>admin/client_portals.php" class="block px-4 py-3 text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                                     <i class="fas fa-user-shield mr-2 opacity-50"></i> Client Portals
@@ -216,12 +249,6 @@ $trackerAppModeClass = $trackerAppModeLabel === 'Primary App'
                                 <?php endif; ?>
                                 <a href="<?php echo $base; ?>admin/deploy.php" class="block px-4 py-3 text-xs font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors">
                                     <i class="fas fa-rocket mr-2 opacity-50"></i> Deploy Tracker
-                                </a>
-                                <a href="<?php echo $base; ?>work_order_workflow.php" class="block px-4 py-3 text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-                                    <i class="fas fa-clipboard-list mr-2 opacity-50"></i> Work Order Workflow
-                                </a>
-                                <a href="<?php echo $base; ?>projects/workflow.php" class="block px-4 py-3 text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-                                    <i class="fas fa-project-diagram mr-2 opacity-50"></i> Project Workflow
                                 </a>
                                 <a href="<?php echo $base; ?>backup/backup_ui.php" class="block px-4 py-3 text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                                     <i class="fas fa-database mr-2 opacity-50"></i> Database Backup
@@ -294,12 +321,17 @@ $trackerAppModeClass = $trackerAppModeLabel === 'Primary App'
             <a href="<?php echo $base; ?>projects/projects_list.php" class="block px-4 py-3 rounded-xl text-base font-black uppercase tracking-widest <?php echo (strpos($_SERVER['REQUEST_URI'], '/projects/') !== false) ? 'bg-white text-indigo-700 dark:bg-indigo-600' : 'text-indigo-100 hover:bg-indigo-700 dark:hover:bg-slate-800'; ?>">
                 <i class="fas fa-project-diagram mr-2"></i> Projects
             </a>
+            <?php if (isTrackerAdminUser()): ?>
+                <a href="<?php echo $base; ?>admin/index.php?tab=categories" class="block px-8 py-2 text-sm font-bold uppercase tracking-widest text-emerald-200 hover:text-white dark:hover:bg-slate-800">
+                    <i class="fas fa-list-check mr-2 opacity-50"></i> Milestone Templates
+                </a>
+            <?php endif; ?>
 
             <a href="<?php echo $base; ?>leads/proposals/proposals_list.php" class="block px-4 py-3 rounded-xl text-base font-black uppercase tracking-widest <?php echo (strpos($_SERVER['REQUEST_URI'], '/proposals/') !== false) ? 'bg-white text-indigo-700 dark:bg-indigo-600' : 'text-indigo-100 hover:bg-indigo-700 dark:hover:bg-slate-800'; ?>">
                 <i class="fas fa-file-invoice-dollar mr-2"></i> Proposals
             </a>
             <?php if (isTrackerSuperAdmin()): ?>
-                <a href="<?php echo $base; ?>leads/proposals/template_manager.php" class="block px-8 py-2 text-sm font-bold uppercase tracking-widest text-indigo-100 hover:text-white dark:hover:bg-slate-800">
+                <a href="<?php echo $base; ?>leads/proposals/template_manager.php" class="block px-8 py-2 text-sm font-bold uppercase tracking-widest text-emerald-200 hover:text-white dark:hover:bg-slate-800">
                     <i class="fas fa-layer-group mr-2 opacity-50"></i> Template Manager
                 </a>
             <?php endif; ?>
@@ -348,16 +380,20 @@ $trackerAppModeClass = $trackerAppModeLabel === 'Primary App'
                 <!-- Mobile Admin Section -->
                 <div class="space-y-1 pt-2">
                     <div class="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-indigo-300 dark:text-indigo-400">Administration</div>
-                    <a href="<?php echo $base; ?>admin/index.php" class="block px-8 py-2 text-sm font-bold uppercase tracking-widest text-indigo-100 hover:text-white dark:hover:bg-slate-800">System Settings</a>
+                    <a href="<?php echo $base; ?>admin/index.php?tab=categories" class="block px-8 py-2 text-sm font-bold uppercase tracking-widest text-indigo-100 hover:text-white dark:hover:bg-slate-800">Categories</a>
+                    <a href="<?php echo $base; ?>admin/index.php?tab=users" class="block px-8 py-2 text-sm font-bold uppercase tracking-widest text-indigo-100 hover:text-white dark:hover:bg-slate-800">User Management</a>
+                    <a href="<?php echo $base; ?>admin/index.php?tab=global-settings" class="block px-8 py-2 text-sm font-bold uppercase tracking-widest text-indigo-100 hover:text-white dark:hover:bg-slate-800">Global Settings</a>
+                    <a href="<?php echo $base; ?>admin/index.php?tab=leave-types" class="block px-8 py-2 text-sm font-bold uppercase tracking-widest text-indigo-100 hover:text-white dark:hover:bg-slate-800">Leave Types</a>
+                    <?php if ($canUseSharedMaintenanceTools): ?>
+                    <a href="<?php echo $base; ?>admin/index.php?tab=maintenance" class="block px-8 py-2 text-sm font-bold uppercase tracking-widest text-amber-200 hover:text-white dark:hover:bg-slate-800">Maintenance</a>
+                    <?php endif; ?>
                     <?php if (isTrackerSuperAdmin()): ?>
-                    <a href="<?php echo $base; ?>admin/profile.php" class="block px-8 py-2 text-sm font-bold uppercase tracking-widest text-sky-200 hover:text-white dark:hover:bg-slate-800">Admin Profile</a>
+                    <a href="<?php echo $base; ?>admin/api_docs.php" class="block px-8 py-2 text-sm font-bold uppercase tracking-widest text-sky-200 hover:text-white dark:hover:bg-slate-800">API Docs</a>
                     <a href="<?php echo $base; ?>admin/client_portals.php" class="block px-8 py-2 text-sm font-bold uppercase tracking-widest text-indigo-100 hover:text-white dark:hover:bg-slate-800">Client Portals</a>
                     <?php if ($canUseTenantAdminTools): ?>
                     <a href="<?php echo $base; ?>admin/tenants.php" class="block px-8 py-2 text-sm font-bold uppercase tracking-widest text-indigo-100 hover:text-white dark:hover:bg-slate-800">Tenant Manager</a>
                     <?php endif; ?>
                     <a href="<?php echo $base; ?>admin/deploy.php" class="block px-8 py-2 text-sm font-bold uppercase tracking-widest text-emerald-300 hover:text-white dark:hover:bg-slate-800">Deploy Tracker</a>
-                    <a href="<?php echo $base; ?>work_order_workflow.php" class="block px-8 py-2 text-sm font-bold uppercase tracking-widest text-indigo-100 hover:text-white dark:hover:bg-slate-800">Work Order Workflow</a>
-                    <a href="<?php echo $base; ?>projects/workflow.php" class="block px-8 py-2 text-sm font-bold uppercase tracking-widest text-indigo-100 hover:text-white dark:hover:bg-slate-800">Project Workflow</a>
                     <a href="<?php echo $base; ?>backup/backup_ui.php" class="block px-8 py-2 text-sm font-bold uppercase tracking-widest text-indigo-100 hover:text-white dark:hover:bg-slate-800">Database Backup</a>
                     <a href="<?php echo $base; ?>admin/twilio.php" class="block px-8 py-2 text-sm font-bold uppercase tracking-widest text-indigo-100 hover:text-white dark:hover:bg-slate-800">Twilio Routing</a>
                     <?php endif; ?>

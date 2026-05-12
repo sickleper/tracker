@@ -116,15 +116,22 @@ fi
 mkdir -p "$TARGET_DIR/storage"
 reset_runtime_dirs "$TARGET_DIR"
 
-cat > "$TARGET_DIR/storage/app_bootstrap.local.json" <<EOF
-{
-    "app_name": "$APP_NAME",
-    "app_url": "$APP_URL",
-    "laravel_api_url": "$API_URL",
-    "default_tenant": "$TENANT_SLUG",
-    "is_primary_app": "$IS_PRIMARY_APP"
+php -r '
+[$path, $appName, $appUrl, $apiUrl, $tenantSlug, $isPrimaryApp] = array_slice($argv, 1);
+$config = [
+    "app_name" => $appName,
+    "app_url" => $appUrl,
+    "laravel_api_url" => $apiUrl,
+    "default_tenant" => $tenantSlug,
+    "is_primary_app" => $isPrimaryApp,
+];
+$json = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+if (!is_string($json)) {
+    fwrite(STDERR, "ERROR: Failed to encode bootstrap config.\n");
+    exit(1);
 }
-EOF
+file_put_contents($path, $json . PHP_EOL);
+' "$TARGET_DIR/storage/app_bootstrap.local.json" "$APP_NAME" "$APP_URL" "$API_URL" "$TENANT_SLUG" "$IS_PRIMARY_APP"
 
 if [ ! -L "$TARGET_DIR/dist" ] && [ ! -e "$TARGET_DIR/dist" ]; then
   ln -s "$SHARED_ROOT/dist" "$TARGET_DIR/dist"

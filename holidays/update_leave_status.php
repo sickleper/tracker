@@ -18,6 +18,12 @@ if (!isTrackerAuthenticated()) {
     exit;
 }
 
+if (!isTrackerAdminUser()) {
+    http_response_code(403);
+    echo json_encode(['status' => 'error', 'message' => 'Admin access required']);
+    exit;
+}
+
 $id = $_POST['leave_id'] ?? null;
 $status = $_POST['status'] ?? null;
 

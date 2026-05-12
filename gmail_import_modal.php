@@ -87,7 +87,8 @@ $params = [
 // The dropdown for Assigned To will need to call /api/users itself via JavaScript.
 
 $users = [];
-$usersApiResponse = makeApiCall('/api/users/active');
+// Load active users for assignment.
+$usersApiResponse = makeApiCall('/api/users', ['team_only' => 1]);
 if ($usersApiResponse && ($usersApiResponse['success'] ?? false)) {
     $users = $usersApiResponse['users'] ?? [];
 }

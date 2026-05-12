@@ -1,5 +1,6 @@
 <?php
 require_once '../config.php';
+require_once 'git_runtime.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -28,9 +29,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
 $branch = trim((string) ($_POST['branch'] ?? 'main'));
 $repoDir = realpath(dirname(__DIR__)) ?: dirname(__DIR__);
 
-if (trim((string) shell_exec('git -C ' . escapeshellarg($repoDir) . ' rev-parse --is-inside-work-tree 2>/dev/null')) !== 'true') {
+if (!trackerGitIsConfigured($repoDir)) {
     http_response_code(503);
     echo json_encode(['success' => false, 'message' => 'Git not configured']);
+    exit();
+}
+
+if (!preg_match('/^[A-Za-z0-9._\/-]+$/', $branch)) {
+    http_response_code(422);
+    echo json_encode(['success' => false, 'message' => 'Invalid branch']);
     exit();
 }
 
@@ -39,12 +46,8 @@ $userInfo = posix_getpwuid(posix_geteuid());
 $userName = $userInfo['name'];
 $userHome = $userInfo['dir'];
 
-// Construct the git commands
-// We use the same SSH config logic as deploy and check_updates
-$sshConfig = $userHome . '/.ssh/config';
-$gitSshCommand = "ssh -F " . escapeshellarg($sshConfig);
-
-$cmd = "export HOME=" . escapeshellarg($userHome) . " && export GIT_SSH_COMMAND=" . escapeshellarg($gitSshCommand) . " && cd " . escapeshellarg($repoDir) . " && git push origin " . escapeshellarg($branch) . " 2>&1";
+// Use the web user's SSH config when present, otherwise the repo-level SSH config.
+$cmd = trackerGitCommand($repoDir, 'push origin ' . escapeshellarg($branch), trackerGitSshEnv($repoDir, $userHome)) . ' 2>&1';
 
 $output = [];
 $exitCode = 1;

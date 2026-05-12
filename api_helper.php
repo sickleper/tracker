@@ -73,8 +73,8 @@ if (!function_exists('makeApiCall')) {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
 
         $api_response = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -112,8 +112,10 @@ if (!function_exists('loadGlobalSettings')) {
                         switch($key) {
                             case 'google_maps_api_key': $GLOBALS['googleMapsApiKey'] = $val; break;
                             case 'eircode_api_key': $GLOBALS['eircode_api_key'] = $val; break;
-                            case 'vat_rate': $GLOBALS['vat_rate'] = $val; break;
-                            case 'callout_days': $GLOBALS['callout_days'] = $val; break;
+                        case 'vat_rate': $GLOBALS['vat_rate'] = $val; break;
+                        case 'callout_days': $GLOBALS['callout_days'] = $val; break;
+                        case 'booking_enabled': $GLOBALS['booking_enabled'] = filter_var($val, FILTER_VALIDATE_BOOLEAN); break;
+                        case 'disable_current_week_bookings': $GLOBALS['disable_current_week_bookings'] = filter_var($val, FILTER_VALIDATE_BOOLEAN); break;
                             case 'google_calendar_id': $GLOBALS['google_calendar_id'] = $val; break;
                             case 'gallery_folder_id': $GLOBALS['gallery_folder_id'] = $val; break;
                             case 'tracker_notify_names': $GLOBALS['tracker_notify_names'] = $val; break;
@@ -139,7 +141,9 @@ if (!function_exists('loadGlobalSettings')) {
             }
         }
 
-        $tenantId = (int) ($_SESSION['tenant_id'] ?? 0);
+        $tenantId = function_exists('trackerTenantId')
+            ? (int) (trackerTenantId() ?? 0)
+            : (int) ($_SESSION['tenant_id'] ?? 0);
         if ($tenantId > 0) {
             $featureRes = makeApiCall('/api/tenants/' . $tenantId . '/feature-settings');
             if ($featureRes && ($featureRes['success'] ?? false) && is_array($featureRes['data'] ?? null)) {
@@ -195,8 +199,19 @@ if (!function_exists('isTrackerAdminUser')) {
 
         $currentUserRes = makeApiCall('/api/user');
         if (is_array($currentUserRes)) {
-            $isOffice = (bool) ($currentUserRes['data']['is_office'] ?? $currentUserRes['is_office'] ?? false);
+            $data = $currentUserRes['data'] ?? $currentUserRes;
+            $isOffice = (bool) ($data['is_office'] ?? false);
             $_SESSION['is_office'] = $isOffice;
+            if (!empty($data['name'])) {
+                $_SESSION['user_name'] = $data['name'];
+            }
+            if (!empty($data['email'])) {
+                $_SESSION['email'] = $data['email'];
+                $_SESSION['user_email'] = $data['email'];
+            }
+            if (!empty($data['tenant_id'])) {
+                $_SESSION['tenant_id'] = (int) $data['tenant_id'];
+            }
 
             return $isOffice;
         }

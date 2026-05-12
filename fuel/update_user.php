@@ -13,12 +13,19 @@ if (!isTrackerAuthenticated()) {
     exit;
 }
 
+if (!isTrackerAdminUser()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Admin access required']);
+    exit;
+}
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $id = $_POST['id'] ?? null;
+    $id = (int) ($_POST['id'] ?? 0);
     $data = $_POST;
     unset($data['id']);
+    unset($data['user_id']);
 
-    if ($id) {
+    if ($id > 0) {
         try {
             $response = makeApiCall("/api/users/{$id}", $data, 'PATCH');
             echo json_encode($response);

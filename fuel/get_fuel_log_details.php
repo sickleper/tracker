@@ -6,6 +6,7 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../tracker_data.php';
+require_once __DIR__ . '/upload_helpers.php';
 
 if (!isTrackerAuthenticated()) {
     http_response_code(401);
@@ -14,6 +15,17 @@ if (!isTrackerAuthenticated()) {
 }
 
 $logId = isset($_GET['log_id']) ? (int)$_GET['log_id'] : null;
+$isAdmin = isTrackerAdminUser();
+$sessionUserId = (int) ($_SESSION['user_id'] ?? 0);
+if (!$isAdmin && $sessionUserId <= 0) {
+    $sessionUserId = fuelCurrentUserId();
+}
+
+if (!$isAdmin && $sessionUserId <= 0) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Unable to resolve user identity.']);
+    exit;
+}
 
 if (!$logId) {
     echo json_encode(['error' => 'Log ID not provided or is invalid.']);
@@ -24,6 +36,15 @@ try {
     $response = makeApiCall("/api/fuel/logs/{$logId}");
     
     if ($response && ($response['success'] ?? false)) {
+        $entry = $response['log'] ?? [];
+        $logOwnerId = (int) ($entry['user_id'] ?? 0);
+
+        if (!$isAdmin && $logOwnerId !== $sessionUserId) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Cannot view another user\'s fuel log.']);
+            exit;
+        }
+
         echo json_encode($response['log']);
     } else {
         echo json_encode(['error' => $response['message'] ?? 'Log not found']);

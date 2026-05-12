@@ -70,7 +70,12 @@ include '../nav.php';
         if (!mapDiv) return;
         mapDiv.innerHTML = '';
 
-        const map = L.map(elementId, { center: [53.4106, -6.4426], zoom: 10, tap: false });
+        const map = L.map(elementId, {
+            center: [53.4106, -6.4426],
+            zoom: 10,
+            tap: false,
+            scrollWheelZoom: false
+        });
         
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
             maxZoom: 19,
@@ -79,7 +84,7 @@ include '../nav.php';
 
         if (!locations || locations.length === 0) return;
         
-        const markers = [];
+        const markerLayer = L.featureGroup().addTo(map);
         locations.forEach(loc => {
             const lat = parseFloat(loc.lat);
             const lng = parseFloat(loc.lng);
@@ -96,7 +101,7 @@ include '../nav.php';
                 iconAnchor: [7, 7]
             });
 
-            const marker = L.marker([lat, lng], { icon: icon }).addTo(map);
+            const marker = L.marker([lat, lng], { icon: icon }).addTo(markerLayer);
             marker.bindPopup(`
                 <div class="p-2 min-w-[180px] dark:text-slate-900">
                     <div class="flex justify-between items-start mb-2">
@@ -107,10 +112,14 @@ include '../nav.php';
                     <p class="text-[10px] text-gray-500 leading-normal border-t border-gray-100 pt-2 mt-2 italic">${escapeHtml(loc.address)}</p>
                 </div>
             `);
-            markers.push([lat, lng]);
         });
 
-        if (markers.length > 0) map.fitBounds(markers, { padding: [40, 40] });
+        if (markerLayer.getLayers().length > 0) {
+            map.fitBounds(markerLayer.getBounds(), {
+                padding: [40, 40],
+                maxZoom: 13
+            });
+        }
         setTimeout(() => map.invalidateSize(), 500);
     }
 </script>

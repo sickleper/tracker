@@ -569,12 +569,28 @@ $summaryData = ($summaryRes && ($summaryRes['success'] ?? false)) ? $summaryRes[
         const note = $('#admin-note').val();
         Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), theme: getSwalTheme() });
         $.post('update_leave_status.php', { leave_id: selectedLeaveId, status: status, approve_reason: status === 'approved' ? note : null, reject_reason: status === 'rejected' ? note : null }, function(res) {
-            if (res.status === 'success') { Swal.fire({ icon: 'success', title: 'Updated!', text: `Request ${status}.`, timer: 1500, showConfirmButton: false, theme: getSwalTheme() }); closeModal('approveModal'); fetchSummary(); fetchMyLeaves(); $('#full-calendar').fullCalendar('refetchEvents'); }
+            if (res.status === 'success') {
+                closeModal('approveModal');
+                selectedLeaveId = null;
+                $('#approveModalContent').html('');
+                $('#admin-note').val('');
+                Swal.fire({ icon: 'success', title: 'Updated!', text: `Request ${status}.`, timer: 1500, showConfirmButton: false, theme: getSwalTheme() });
+                fetchSummary();
+                fetchMyLeaves();
+                $('#full-calendar').fullCalendar('refetchEvents');
+            }
             else { Swal.fire({ icon: 'error', title: 'Error!', text: res.message, theme: getSwalTheme() }); }
         }, 'json');
     }
 
-    function closeModal(id) { $('#' + id).addClass('hidden'); }
+    function closeModal(id) {
+        $('#' + id).addClass('hidden');
+        if (id === 'approveModal') {
+            selectedLeaveId = null;
+            $('#approveModalContent').html('');
+            $('#admin-note').val('');
+        }
+    }
 
     function viewLeaveDetails(l) {
         let dateDisplay = moment(l.start_date).format('DD MMM YYYY');

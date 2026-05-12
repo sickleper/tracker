@@ -13,6 +13,7 @@ $isSuperAdmin = isTrackerSuperAdmin();
 $isAdminUser = isTrackerAdminUser();
 $canUseTenantAdminTools = function_exists('trackerCanUseTenantAdminTools') && trackerCanUseTenantAdminTools();
 $canUseSharedMaintenanceTools = function_exists('trackerIsPrimaryApp') && trackerIsPrimaryApp();
+$resolvedMaintenanceTenantId = function_exists('trackerTenantId') ? trackerTenantId() : null;
 
 if (!$isAdminUser) {
     header('Location: ../index.php');
@@ -31,25 +32,6 @@ include '../nav.php';
             <p class="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-widest mt-1">Manage users, project categories, and global settings.</p>
         </div>
         <div class="flex flex-wrap gap-3">
-            <?php if ($isSuperAdmin): ?>
-            <a href="profile.php" class="admin-action admin-action-outline-sky">
-                <i class="fas fa-id-card"></i> Profile
-            </a>
-            <a href="api_docs.php" class="admin-action admin-action-outline-info">
-                <i class="fas fa-book"></i> API Docs
-            </a>
-            <a href="client_portals.php" class="admin-action admin-action-outline-info">
-                <i class="fas fa-user-shield"></i> Client Portals
-            </a>
-            <?php if ($canUseTenantAdminTools): ?>
-            <a href="tenants.php" class="admin-action admin-action-outline-violet">
-                <i class="fas fa-building"></i> Tenants
-            </a>
-            <?php endif; ?>
-            <a href="deploy.php" class="admin-action admin-action-outline-success">
-                <i class="fas fa-rocket"></i> Deploy
-            </a>
-            <?php endif; ?>
             <button id="mainAddBtn" onclick="openAddModal()" class="admin-action admin-action-dark">
                 <i class="fas fa-plus-circle text-emerald-400"></i> <span id="addBtnText">Add New Category</span>
             </button>
@@ -256,47 +238,133 @@ include '../nav.php';
         <!-- Tab: Maintenance -->
         <?php if ($canUseSharedMaintenanceTools): ?>
         <div id="tab-maintenance" class="admin-tab-pane hidden">
-            <div class="card-base border-none p-6 space-y-4">
-                <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-4">System Maintenance Tools</h3>
-                <div class="rounded-2xl border border-indigo-200 dark:border-indigo-900/40 bg-indigo-50 dark:bg-indigo-950/20 p-4">
-                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                        <div>
-                            <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500">Tenant Context</p>
-                            <p class="mt-2 text-sm font-bold text-gray-700 dark:text-slate-200">
-                                Maintenance calls are locked to the current runtime tenant for this app and cannot be redirected by request data.
+            <div class="space-y-8">
+                <div class="admin-panel admin-panel-body-lg space-y-6">
+                    <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6">
+                        <div class="max-w-3xl">
+                            <h3 class="text-xl font-black tracking-tight text-gray-900 dark:text-white">System Maintenance</h3>
+                            <p class="mt-2 text-sm font-semibold text-gray-500 dark:text-slate-400">
+                                Run cache and cleanup actions for the live tracker runtime. These tools act on the current app context only, so every action stays locked to the resolved tenant and server environment.
                             </p>
                         </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-bold text-gray-600 dark:text-slate-300">
-                            <div class="rounded-xl border border-white/70 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-3">
-                                <span class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Tenant Slug</span>
-                                <span id="maintenanceTenantSlug" class="break-all"><?php echo htmlspecialchars(trackerTenantSlug() ?: 'Not resolved', ENT_QUOTES, 'UTF-8'); ?></span>
+                        <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-black uppercase tracking-widest text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200">
+                            Shared App Tools
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                        <div class="xl:col-span-2 rounded-3xl border border-indigo-200 dark:border-indigo-900/40 bg-gradient-to-br from-indigo-50 via-sky-50 to-white dark:from-indigo-950/20 dark:via-slate-900 dark:to-slate-950 p-6">
+                            <div class="flex items-start gap-4">
+                                <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/20">
+                                    <i class="fas fa-shield-alt"></i>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500">Tenant Context</p>
+                                    <p class="mt-2 text-sm font-bold text-gray-700 dark:text-slate-200">
+                                        Maintenance requests are resolved from the active app runtime. Request payloads cannot override tenant routing.
+                                    </p>
+                                </div>
                             </div>
-                            <div class="rounded-xl border border-white/70 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-3">
-                                <span class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Tenant ID</span>
-                                <span id="maintenanceTenantId"><?php echo htmlspecialchars((string) ($_SESSION['tenant_id'] ?? 'Unknown'), ENT_QUOTES, 'UTF-8'); ?></span>
+                            <div class="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-bold text-gray-600 dark:text-slate-300">
+                                <div class="rounded-2xl border border-white/80 dark:border-slate-800 bg-white/90 dark:bg-slate-950 px-4 py-4">
+                                    <span class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Tenant Slug</span>
+                                    <span id="maintenanceTenantSlug" class="break-all"><?php echo htmlspecialchars(trackerTenantSlug() ?: 'Not resolved', ENT_QUOTES, 'UTF-8'); ?></span>
+                                </div>
+                                <div class="rounded-2xl border border-white/80 dark:border-slate-800 bg-white/90 dark:bg-slate-950 px-4 py-4">
+                                    <span class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Tenant ID</span>
+                                    <span id="maintenanceTenantId"><?php echo htmlspecialchars($resolvedMaintenanceTenantId !== null ? (string) $resolvedMaintenanceTenantId : 'Not resolved', ENT_QUOTES, 'UTF-8'); ?></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="maintenanceStatusCard" class="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-6 shadow-sm">
+                            <p class="text-[10px] font-black uppercase tracking-widest text-emerald-500">Maintenance Status</p>
+                            <h4 id="maintenanceStatusTitle" class="mt-3 text-lg font-black tracking-tight text-gray-900 dark:text-white">Ready</h4>
+                            <p id="maintenanceStatusMessage" class="mt-2 text-sm font-semibold text-gray-500 dark:text-slate-400">
+                                Choose an action below. Results will show here after each maintenance task finishes.
+                            </p>
+                            <div class="mt-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/70 px-4 py-4">
+                                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Last Action</p>
+                                <p id="maintenanceLastAction" class="mt-2 text-sm font-bold text-slate-600 dark:text-slate-300">No action run yet.</p>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <button id="clearCacheBtn" class="admin-action admin-action-primary rounded-xl shadow-md">
-                        <i class="fas fa-broom"></i> Clear Application Cache (cache:clear)
-                    </button>
-                    <button id="clearRouteCacheBtn" class="admin-action bg-blue-600 text-white hover:bg-blue-700 rounded-xl shadow-md">
-                        <i class="fas fa-route"></i> Clear Route Cache
-                    </button>
-                    <button id="clearConfigCacheBtn" class="admin-action bg-purple-600 text-white hover:bg-purple-700 rounded-xl shadow-md">
-                        <i class="fas fa-cogs"></i> Clear Config Cache
-                    </button>
-                    <button id="optimizeClearBtn" class="admin-action admin-action-success rounded-xl shadow-md">
-                        <i class="fas fa-magic"></i> Clear All Compiled (optimize:clear)
-                    </button>
-                    <button id="clearLogsBtn" class="admin-action bg-red-600 text-white hover:bg-red-700 rounded-xl shadow-md">
-                        <i class="fas fa-eraser"></i> Clear Application Logs
-                    </button>
-                    <button id="clearSessionsBtn" class="admin-action bg-orange-600 text-white hover:bg-orange-700 rounded-xl shadow-md">
-                        <i class="fas fa-user-clock"></i> Clear Expired Sessions (>7 Days)
-                    </button>
+
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                    <div class="admin-panel admin-panel-body-lg space-y-5">
+                        <div>
+                            <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500">Cache And Build</p>
+                            <h4 class="mt-2 text-lg font-black tracking-tight text-gray-900 dark:text-white">Refresh runtime caches</h4>
+                            <p class="mt-2 text-sm font-semibold text-gray-500 dark:text-slate-400">Use these when config, routes, or compiled state are stale after deploys or environment changes.</p>
+                        </div>
+                        <div class="space-y-3">
+                            <button id="clearCacheBtn" data-maintenance-label="Clear Application Cache" class="maintenance-tool-btn group w-full rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-5 py-4 text-left transition hover:border-indigo-300 hover:bg-indigo-50/60 dark:hover:border-indigo-700 dark:hover:bg-slate-900">
+                                <span class="flex items-start gap-4">
+                                    <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300"><i class="fas fa-broom"></i></span>
+                                    <span class="min-w-0">
+                                        <span class="block text-sm font-black text-gray-900 dark:text-white">Clear Application Cache</span>
+                                        <span class="mt-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">cache:clear</span>
+                                    </span>
+                                </span>
+                            </button>
+                            <button id="clearRouteCacheBtn" data-maintenance-label="Clear Route Cache" class="maintenance-tool-btn group w-full rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-5 py-4 text-left transition hover:border-sky-300 hover:bg-sky-50/60 dark:hover:border-sky-700 dark:hover:bg-slate-900">
+                                <span class="flex items-start gap-4">
+                                    <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300"><i class="fas fa-route"></i></span>
+                                    <span class="min-w-0">
+                                        <span class="block text-sm font-black text-gray-900 dark:text-white">Clear Route Cache</span>
+                                        <span class="mt-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">route:clear</span>
+                                    </span>
+                                </span>
+                            </button>
+                            <button id="clearConfigCacheBtn" data-maintenance-label="Clear Config Cache" class="maintenance-tool-btn group w-full rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-5 py-4 text-left transition hover:border-violet-300 hover:bg-violet-50/60 dark:hover:border-violet-700 dark:hover:bg-slate-900">
+                                <span class="flex items-start gap-4">
+                                    <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300"><i class="fas fa-cogs"></i></span>
+                                    <span class="min-w-0">
+                                        <span class="block text-sm font-black text-gray-900 dark:text-white">Clear Config Cache</span>
+                                        <span class="mt-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">config:clear</span>
+                                    </span>
+                                </span>
+                            </button>
+                            <button id="optimizeClearBtn" data-maintenance-label="Clear All Compiled Files" class="maintenance-tool-btn group w-full rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-5 py-4 text-left transition hover:border-emerald-300 hover:bg-emerald-50/60 dark:hover:border-emerald-700 dark:hover:bg-slate-900">
+                                <span class="flex items-start gap-4">
+                                    <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"><i class="fas fa-magic"></i></span>
+                                    <span class="min-w-0">
+                                        <span class="block text-sm font-black text-gray-900 dark:text-white">Clear All Compiled</span>
+                                        <span class="mt-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">optimize:clear</span>
+                                    </span>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="admin-panel admin-panel-body-lg space-y-5">
+                        <div>
+                            <p class="text-[10px] font-black uppercase tracking-widest text-rose-500">Cleanup</p>
+                            <h4 class="mt-2 text-lg font-black tracking-tight text-gray-900 dark:text-white">Remove stale operational data</h4>
+                            <p class="mt-2 text-sm font-semibold text-gray-500 dark:text-slate-400">Use these selectively. They clean runtime logs and expired session data rather than rebuilding application caches.</p>
+                        </div>
+                        <div class="space-y-3">
+                            <button id="clearLogsBtn" data-maintenance-label="Clear Application Logs" class="maintenance-tool-btn group w-full rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-5 py-4 text-left transition hover:border-rose-300 hover:bg-rose-50/60 dark:hover:border-rose-700 dark:hover:bg-slate-900">
+                                <span class="flex items-start gap-4">
+                                    <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300"><i class="fas fa-eraser"></i></span>
+                                    <span class="min-w-0">
+                                        <span class="block text-sm font-black text-gray-900 dark:text-white">Clear Application Logs</span>
+                                        <span class="mt-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Prunes stored log output from the tracker runtime.</span>
+                                    </span>
+                                </span>
+                            </button>
+                            <button id="clearSessionsBtn" data-maintenance-label="Clear Expired Sessions" class="maintenance-tool-btn group w-full rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-5 py-4 text-left transition hover:border-amber-300 hover:bg-amber-50/60 dark:hover:border-amber-700 dark:hover:bg-slate-900">
+                                <span class="flex items-start gap-4">
+                                    <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"><i class="fas fa-user-clock"></i></span>
+                                    <span class="min-w-0">
+                                        <span class="block text-sm font-black text-gray-900 dark:text-white">Clear Expired Sessions</span>
+                                        <span class="mt-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Removes sessions older than seven days to tidy stale auth state.</span>
+                                    </span>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -541,6 +609,17 @@ $(document).ready(function() {
         ]
     };
 
+    function getTenantApiHeaders(extra = {}) {
+        const headers = { ...extra };
+        if (window.apiToken) {
+            headers.Authorization = 'Bearer ' + window.apiToken;
+        }
+        if (window.trackerTenantSlug) {
+            headers['X-Tenant-Slug'] = window.trackerTenantSlug;
+        }
+        return headers;
+    }
+
     function escapeHtml(value) {
         return String(value ?? '')
             .replace(/&/g, '&amp;')
@@ -610,7 +689,7 @@ $(document).ready(function() {
         $.ajax({
             url: `${window.laravelApiUrl}/api/users?all=1`,
             type: 'GET',
-            headers: { 'Authorization': 'Bearer ' + window.apiToken },
+            headers: getTenantApiHeaders(),
             success: function(res) {
                 if (res.success) {
                     let html = '';
@@ -674,7 +753,7 @@ $(document).ready(function() {
                 $.ajax({
                     url: `${window.laravelApiUrl}/api/users/${id}`,
                     type: 'DELETE',
-                    headers: { 'Authorization': 'Bearer ' + window.apiToken },
+                    headers: getTenantApiHeaders(),
                     success: function(res) {
                         if (res.success) {
                             Swal.fire({ ...getSwalConfig(), icon:'success', title:'Deleted!', timer:1500, showConfirmButton:false });
@@ -703,7 +782,7 @@ $(document).ready(function() {
         $.ajax({
             url: `${window.laravelApiUrl}/api/users/${id}`,
             type: 'GET',
-            headers: { 'Authorization': 'Bearer ' + window.apiToken },
+            headers: getTenantApiHeaders(),
             success: function(res) {
                 if (res.success) {
                     const u = res.user;
@@ -773,7 +852,7 @@ $(document).ready(function() {
             type: method,
             data: JSON.stringify(data),
             contentType: 'application/json',
-            headers: { 'Authorization': 'Bearer ' + window.apiToken },
+            headers: getTenantApiHeaders({ 'Content-Type': 'application/json' }),
             success: function(res) {
                 if (res.success) {
                     Swal.fire({ ...getSwalConfig(), icon: 'success', title: 'User Saved', timer: 1500, showConfirmButton: false });
@@ -1061,7 +1140,7 @@ $(document).ready(function() {
         $.ajax({
             url: `${window.laravelApiUrl}/api/clients/full-list?all=1`,
             type: 'GET',
-            headers: { 'Authorization': 'Bearer ' + window.apiToken },
+            headers: getTenantApiHeaders(),
             success: function(cRes) {
                 if (cRes.success) {
                     window.allClients = cRes.data;
@@ -1141,7 +1220,71 @@ $(document).ready(function() {
                             ensureSetting('twilio', 'whatsapp_admin_alerts_enabled', '1', 'Enable Admin WhatsApp Alerts (1=on, 0=off)');
                             ensureSetting('general', 'vehicle_document_reminder_days', '30', 'Vehicle Document Reminder Window (days)');
                             ensureSetting('general', 'vehicle_service_reminder_days', '30', 'Vehicle Service Reminder Window (days)');
+                            ensureSetting('general', 'booking_enabled', '1', 'Enable Public Booking Form (1=on,0=off)');
+                            ensureSetting('general', 'disable_current_week_bookings', '0', 'Lock Current Week Online Bookings (1=lock)');
                             
+                            const bookingToggleKeys = ['booking_enabled', 'disable_current_week_bookings'];
+                            if (!Array.isArray(res.data.general)) {
+                                res.data.general = [];
+                            }
+                            const extractedBookingSettings = {};
+                            res.data.general = res.data.general.filter(setting => {
+                                if (bookingToggleKeys.includes(setting.key)) {
+                                    extractedBookingSettings[setting.key] = setting;
+                                    return false;
+                                }
+                                return true;
+                            });
+                            const bookingSettings = bookingToggleKeys.map(key => {
+                                if (extractedBookingSettings[key]) {
+                                    return extractedBookingSettings[key];
+                                }
+                                return {
+                                    key,
+                                    value: key === 'booking_enabled' ? '1' : '0',
+                                    description: key === 'booking_enabled'
+                                        ? 'Enable Public Booking Form (1=on,0=off)'
+                                        : 'Lock Current Week Online Bookings (1=lock)',
+                                    group: 'general'
+                                };
+                            });
+
+                            const bookingTabId = 'gs-bookings';
+                            const bookingOptionsHtml = bookingSettings.map(setting => {
+                                const enabled = String(setting.value ?? '') === '1';
+                                const settingBadge = accessBadgeHtml(getSettingAccessLevel('general', setting.key));
+                                const fallbackDescription = setting.key === 'booking_enabled'
+                                    ? 'Enable Public Booking Form (1=on,0=off)'
+                                    : 'Lock Current Week Online Bookings (1=lock)';
+                                const description = escapeHtml(setting.description || fallbackDescription);
+                                return `
+                                    <div>
+                                        <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">
+                                            ${description} ${settingBadge}
+                                        </label>
+                                        <select name="${escapeHtml(setting.key)}" class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                                            <option value="1" ${enabled ? 'selected' : ''}>Enabled</option>
+                                            <option value="0" ${!enabled ? 'selected' : ''}>Disabled</option>
+                                        </select>
+                                    </div>`;
+                            }).join('');
+
+                            tabsContainer.append(`
+                                <button type="button" data-gs-tab="${bookingTabId}" class="gs-tab-btn px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700">
+                                    Bookings
+                                </button>
+                            `);
+                            container.append(`
+                                <div id="${bookingTabId}" class="gs-tab-pane hidden card-base p-8 space-y-8 animate-fade-in">
+                                    <h4 class="text-xs font-black uppercase tracking-widest text-indigo-500 mb-6 flex items-center gap-2 border-b border-gray-100 dark:border-slate-800 pb-4">
+                                        <i class="fas fa-calendar-check text-gray-300"></i> Booking Controls <span class="ml-2 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300">Office</span>
+                                    </h4>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        ${bookingOptionsHtml}
+                                    </div>
+                                </div>
+                            `);
+
                             const groups = Object.keys(res.data);
                             const userSettingsContainer = $('#userSettingsContainer');
                             userSettingsContainer.empty();
@@ -1246,7 +1389,7 @@ $(document).ready(function() {
                                         
                                         dayPickerHtml += `</div><input type="hidden" name="callout_days" id="callout_days_hidden" value="${escapeHtml(setting.value || '')}"></div>`;
                                         groupHtml += dayPickerHtml;
-                                    } 
+                                    }
                                     else if (['tracker_notify_names', 'tracker_client_names', 'tracker_sub_names'].includes(setting.key)) {
                                         const activeNames = (setting.value || '').split(',').map(s => s.trim());
                                         let clientPickerHtml = `
@@ -1286,6 +1429,21 @@ $(document).ready(function() {
                                             </div>`;
                                     }
                                     else {
+                                        const toggleKeys = ['booking_enabled', 'disable_current_week_bookings'];
+                                        if (toggleKeys.includes(setting.key)) {
+                                            const enabled = String(setting.value ?? '') === '1';
+                                            groupHtml += `
+                                                <div>
+                                                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">
+                                                        ${escapeHtml(setting.description || setting.key)} ${settingBadge}
+                                                    </label>
+                                                    <select name="${escapeHtml(setting.key)}" class="w-full p-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                                                        <option value="1" ${enabled ? 'selected' : ''}>Enabled</option>
+                                                        <option value="0" ${!enabled ? 'selected' : ''}>Disabled</option>
+                                                    </select>
+                                                </div>`;
+                                            return;
+                                        }
                                         const numericSettings = new Set([
                                             'gmail_workorder_lookback_days',
                                             'booking_service_radius_km',
@@ -1497,39 +1655,124 @@ $(document).ready(function() {
     }
 
     // --- Maintenance Functions ---
-    function runMaintenanceAction(action, successTitle) {
+    function setMaintenanceStatus(type, title, message, lastAction) {
+        const card = $('#maintenanceStatusCard');
+        const titleEl = $('#maintenanceStatusTitle');
+        const messageEl = $('#maintenanceStatusMessage');
+        const actionEl = $('#maintenanceLastAction');
+
+        if (!card.length) {
+            return;
+        }
+
+        card.removeClass('border-slate-200 border-emerald-200 border-rose-200 dark:border-slate-800 dark:border-emerald-900/40 dark:border-rose-900/40');
+        titleEl.removeClass('text-gray-900 text-emerald-700 text-rose-700 dark:text-white dark:text-emerald-300 dark:text-rose-300');
+
+        if (type === 'success') {
+            card.addClass('border-emerald-200 dark:border-emerald-900/40');
+            titleEl.addClass('text-emerald-700 dark:text-emerald-300');
+        } else if (type === 'error') {
+            card.addClass('border-rose-200 dark:border-rose-900/40');
+            titleEl.addClass('text-rose-700 dark:text-rose-300');
+        } else {
+            card.addClass('border-slate-200 dark:border-slate-800');
+            titleEl.addClass('text-gray-900 dark:text-white');
+        }
+
+        titleEl.text(title);
+        messageEl.text(message);
+        if (lastAction) {
+            actionEl.text(lastAction);
+        }
+    }
+
+    function setMaintenanceButtonsBusy(isBusy, activeAction) {
+        $('.maintenance-tool-btn').each(function() {
+            const button = $(this);
+            button.prop('disabled', isBusy);
+            button.toggleClass('opacity-60 cursor-not-allowed', isBusy);
+            if (isBusy && activeAction && button.attr('id') === activeAction) {
+                button.addClass('ring-2 ring-indigo-300 dark:ring-indigo-700');
+            } else {
+                button.removeClass('ring-2 ring-indigo-300 dark:ring-indigo-700');
+            }
+        });
+    }
+
+    function runMaintenanceAction(action, successTitle, buttonId, actionLabel) {
+        setMaintenanceButtonsBusy(true, buttonId);
+        setMaintenanceStatus('info', 'Running...', 'The maintenance task is in progress.', actionLabel || 'Maintenance task started');
+
         $.post('../admin/maintenance_handler.php', { action }, function(res) {
             if (res.success) {
-                Swal.fire({ ...getSwalConfig(), icon: 'success', title: successTitle, text: res.message });
+                setMaintenanceStatus('success', successTitle, res.message || 'Maintenance task finished successfully.', actionLabel || successTitle);
+                Swal.fire({
+                    ...getSwalConfig({
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 2200,
+                        timerProgressBar: true
+                    }),
+                    icon: 'success',
+                    title: successTitle
+                });
                 if (res.tenant_slug) {
                     $('#maintenanceTenantSlug').text(res.tenant_slug);
                 }
+                if (res.tenant_id) {
+                    $('#maintenanceTenantId').text(res.tenant_id);
+                }
             } else {
-                Swal.fire({ ...getSwalConfig(), icon: 'error', title: 'Maintenance Failed', text: res.message || 'Request failed.' });
+                setMaintenanceStatus('error', 'Maintenance Failed', res.message || 'Request failed.', actionLabel || 'Maintenance task failed');
+                Swal.fire({
+                    ...getSwalConfig({
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3200,
+                        timerProgressBar: true
+                    }),
+                    icon: 'error',
+                    title: res.message || 'Maintenance failed'
+                });
             }
         }, 'json').fail(function(xhr) {
             const message = xhr.responseJSON?.message || 'Request failed.';
-            Swal.fire({ ...getSwalConfig(), icon: 'error', title: 'Maintenance Failed', text: message });
+            setMaintenanceStatus('error', 'Maintenance Failed', message, actionLabel || 'Maintenance task failed');
+            Swal.fire({
+                ...getSwalConfig({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3200,
+                    timerProgressBar: true
+                }),
+                icon: 'error',
+                title: message
+            });
+        }).always(function() {
+            setMaintenanceButtonsBusy(false);
         });
     }
 
     window.clearCache = function() {
-        runMaintenanceAction('clear_cache', 'Cache Cleared!');
+        runMaintenanceAction('clear_cache', 'Cache Cleared!', 'clearCacheBtn', 'Clear Application Cache');
     }
     window.clearLogs = function() {
-        runMaintenanceAction('clear_logs', 'Logs Cleared!');
+        runMaintenanceAction('clear_logs', 'Logs Cleared!', 'clearLogsBtn', 'Clear Application Logs');
     }
     window.clearSessions = function() {
-        runMaintenanceAction('clear_sessions', 'Sessions Cleared!');
+        runMaintenanceAction('clear_sessions', 'Sessions Cleared!', 'clearSessionsBtn', 'Clear Expired Sessions');
     }
     window.clearRouteCache = function() {
-        runMaintenanceAction('clear_route_cache', 'Route Cache Cleared!');
+        runMaintenanceAction('clear_route_cache', 'Route Cache Cleared!', 'clearRouteCacheBtn', 'Clear Route Cache');
     }
     window.clearConfigCache = function() {
-        runMaintenanceAction('clear_config_cache', 'Config Cache Cleared!');
+        runMaintenanceAction('clear_config_cache', 'Config Cache Cleared!', 'clearConfigCacheBtn', 'Clear Config Cache');
     }
     window.optimizeClear = function() {
-        runMaintenanceAction('optimize_clear', 'All Compiled Cleared!');
+        runMaintenanceAction('optimize_clear', 'All Compiled Cleared!', 'optimizeClearBtn', 'Clear All Compiled');
     }
 
     $('#clearCacheBtn').on('click', clearCache);
@@ -1550,7 +1793,7 @@ $(document).ready(function() {
         $.ajax({
             url: `${window.laravelApiUrl}/api/projects/categories/${id}/milestones`,
             type: 'GET',
-            headers: { 'Authorization': 'Bearer ' + window.apiToken },
+            headers: getTenantApiHeaders(),
             success: function(res) {
                 if (res.success && res.data.length > 0) {
                     res.data.forEach(m => addBuilderRow(m));
@@ -1599,7 +1842,7 @@ $(document).ready(function() {
             url: `${window.laravelApiUrl}/api/projects/categories/milestones`,
             type: 'POST',
             data: formData,
-            headers: { 'Authorization': 'Bearer ' + window.apiToken },
+            headers: getTenantApiHeaders(),
             success: function(res) {
                 if (res.success) {
                     Swal.fire({ ...getSwalConfig(), icon: 'success', title: 'Template Saved!', text: res.message, timer: 1500, showConfirmButton: false });

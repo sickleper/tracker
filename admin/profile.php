@@ -104,13 +104,16 @@ $name = $currentUser['name'] ?? ($_SESSION['user_name'] ?? 'Admin');
 $email = $currentUser['email'] ?? ($_SESSION['email'] ?? '');
 $mobile = $currentUser['mobile'] ?? '';
 $status = $currentUser['status'] ?? 'active';
-$roleId = (int) ($currentUser['role_id'] ?? ($_SESSION['role_id'] ?? 0));
 $isOffice = !empty($currentUser['is_office']);
 $isMember = !empty($currentUser['is_member']);
 $isDriver = !empty($currentUser['is_driver']);
 $isSubcontractor = !empty($currentUser['is_subcontractor']);
 $googleId = trim((string) ($currentUser['google_id'] ?? ($_SESSION['google_id'] ?? '')));
-$userAuthId = $currentUser['user_auth_id'] ?? ($_SESSION['user_auth_id'] ?? null);
+$userAuthId = trim((string) ($currentUser['user_auth_id'] ?? ($_SESSION['user_auth_id'] ?? '')));
+$authLinked = ($googleId !== '' || $userAuthId !== '');
+$userAuthIdDisplay = $userAuthId !== ''
+    ? $userAuthId
+    : ($googleId !== '' ? 'Managed via Google OAuth' : 'Not set');
 
 include '../header.php';
 include '../nav.php';
@@ -165,8 +168,8 @@ include '../nav.php';
                         <div class="mt-2 text-sm font-bold text-slate-700 dark:text-slate-200 uppercase"><?php echo htmlspecialchars($status); ?></div>
                     </div>
                     <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-4">
-                        <div class="text-[10px] font-black uppercase tracking-widest text-slate-400">Role ID</div>
-                        <div class="mt-2 text-sm font-bold text-slate-700 dark:text-slate-200"><?php echo htmlspecialchars((string) $roleId); ?></div>
+                        <div class="text-[10px] font-black uppercase tracking-widest text-slate-400">Access Model</div>
+                        <div class="mt-2 text-sm font-bold text-slate-700 dark:text-slate-200">Flags-based permissions</div>
                     </div>
                 </div>
 
@@ -185,11 +188,11 @@ include '../nav.php';
                     <div class="text-[10px] font-black uppercase tracking-[0.25em] text-indigo-600 dark:text-indigo-300">Authentication</div>
                     <div class="flex justify-between gap-4 text-sm">
                         <span class="text-slate-500 dark:text-slate-400">Google linked</span>
-                        <span class="font-black text-slate-900 dark:text-white"><?php echo $googleId !== '' ? 'Yes' : 'No'; ?></span>
+                        <span class="font-black text-slate-900 dark:text-white"><?php echo $authLinked ? 'Yes' : 'No'; ?></span>
                     </div>
                     <div class="flex justify-between gap-4 text-sm">
                         <span class="text-slate-500 dark:text-slate-400">User Auth ID</span>
-                        <span class="font-black text-slate-900 dark:text-white"><?php echo htmlspecialchars((string) ($userAuthId ?? 'Not set')); ?></span>
+                        <span class="font-black text-slate-900 dark:text-white"><?php echo htmlspecialchars($userAuthIdDisplay); ?></span>
                     </div>
                     <p class="text-xs text-indigo-900 dark:text-indigo-100">Email stays read-only here because admin access is currently tied to the configured super-admin email.</p>
                 </div>

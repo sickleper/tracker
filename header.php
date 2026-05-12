@@ -60,6 +60,75 @@
         } else {
             document.documentElement.classList.remove('dark');
         }
+
+        window.getSwalTheme = function() {
+            return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+        };
+
+        window.getSwalConfig = function(overrides = {}) {
+            const isDark = document.documentElement.classList.contains('dark');
+            const baseConfig = {
+                background: isDark ? '#0f172a' : '#ffffff',
+                color: isDark ? '#e2e8f0' : '#0f172a',
+                confirmButtonColor: '#2563eb',
+                cancelButtonColor: isDark ? '#475569' : '#94a3b8',
+                customClass: {
+                    popup: 'tracker-swal-popup',
+                    title: 'tracker-swal-title',
+                    htmlContainer: 'tracker-swal-html',
+                    confirmButton: 'tracker-swal-confirm',
+                    cancelButton: 'tracker-swal-cancel',
+                    denyButton: 'tracker-swal-deny',
+                    input: 'tracker-swal-input',
+                    validationMessage: 'tracker-swal-validation'
+                }
+            };
+
+            const merged = { ...baseConfig, ...overrides };
+            merged.customClass = { ...baseConfig.customClass, ...(overrides.customClass || {}) };
+            return merged;
+        };
+
+        if (window.Swal && !window.Swal.__trackerThemePatched) {
+            const originalFire = window.Swal.fire.bind(window.Swal);
+            const applyFallbackContent = function(config) {
+                const hasContent = Boolean(config.title || config.text || config.html || config.footer || config.inputLabel);
+                if (!config.toast && !hasContent) {
+                    if (!config.icon) {
+                        config.icon = 'success';
+                    }
+                    config.title = config.icon === 'error' ? 'Action Failed' : 'Done';
+                    config.text = config.icon === 'error'
+                        ? 'Something went wrong. Please try again.'
+                        : 'Action completed.';
+                }
+                return config;
+            };
+
+            window.Swal.fire = function(...args) {
+                if (args.length === 1 && args[0] && typeof args[0] === 'object' && !Array.isArray(args[0])) {
+                    return originalFire(applyFallbackContent(window.getSwalConfig(args[0])));
+                }
+
+                // Normalize shorthand usage: Swal.fire(title, text, icon)
+                if (args.length >= 1 && (typeof args[0] === 'string' || typeof args[0] === 'number')) {
+                    const shorthandConfig = {
+                        title: String(args[0] ?? ''),
+                    };
+                    if (args.length >= 2 && args[1] !== undefined) {
+                        shorthandConfig.text = String(args[1] ?? '');
+                    }
+                    if (args.length >= 3 && args[2] !== undefined) {
+                        shorthandConfig.icon = String(args[2] ?? '');
+                    }
+                    return originalFire(applyFallbackContent(window.getSwalConfig(shorthandConfig)));
+                }
+
+                return originalFire(...args);
+            };
+
+            window.Swal.__trackerThemePatched = true;
+        }
     </script>
 
     <style>
@@ -87,7 +156,44 @@
         border: 1px solid #818cf8 !important;
         color: #818cf8 !important;
     }
-</style>
+
+    .tracker-swal-popup {
+        border-radius: 1.5rem !important;
+        border: 1px solid rgba(148, 163, 184, 0.22) !important;
+        box-shadow: 0 30px 80px rgba(15, 23, 42, 0.28) !important;
+    }
+    .dark .tracker-swal-popup {
+        border-color: rgba(71, 85, 105, 0.65) !important;
+        box-shadow: 0 30px 80px rgba(2, 6, 23, 0.7) !important;
+    }
+    .tracker-swal-title {
+        font-weight: 800 !important;
+        letter-spacing: -0.02em;
+    }
+    .tracker-swal-html {
+        color: inherit !important;
+    }
+    .tracker-swal-input {
+        border-radius: 0.9rem !important;
+        border-color: rgba(148, 163, 184, 0.35) !important;
+        background: rgba(255, 255, 255, 0.96) !important;
+        color: #0f172a !important;
+    }
+    .dark .tracker-swal-input {
+        border-color: rgba(71, 85, 105, 0.9) !important;
+        background: rgba(15, 23, 42, 0.92) !important;
+        color: #e2e8f0 !important;
+    }
+        .tracker-swal-validation {
+            border-radius: 0.9rem !important;
+        }
+        .swal2-container {
+            z-index: 9999 !important;
+        }
+        .swal2-popup {
+            z-index: 10000 !important;
+        }
+    </style>
 <?php
     if (!empty($pageCssFiles) && is_array($pageCssFiles)) {
         foreach ($pageCssFiles as $cssFile) {

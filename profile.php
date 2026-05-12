@@ -65,14 +65,17 @@ $name = $profileUser['name'] ?? ($_SESSION['user_name'] ?? 'User');
 $email = $profileUser['email'] ?? ($_SESSION['email'] ?? '');
 $mobile = $profileUser['mobile'] ?? '';
 $status = $profileUser['status'] ?? 'active';
-$roleId = (int) ($profileUser['role_id'] ?? ($_SESSION['role_id'] ?? 0));
 $isOffice = !empty($profileUser['is_office']);
 $isMember = !empty($profileUser['is_member']);
 $isDriver = !empty($profileUser['is_driver']);
 $isSubcontractor = !empty($profileUser['is_subcontractor']);
 $isCalloutDriver = !empty($profileUser['is_callout_driver']);
 $googleId = trim((string) ($profileUser['google_id'] ?? ($_SESSION['google_id'] ?? '')));
-$userAuthId = $profileUser['user_auth_id'] ?? ($_SESSION['user_auth_id'] ?? null);
+$userAuthId = trim((string) ($profileUser['user_auth_id'] ?? ($_SESSION['user_auth_id'] ?? '')));
+$authLinked = ($googleId !== '' || $userAuthId !== '');
+$userAuthIdDisplay = $userAuthId !== ''
+    ? $userAuthId
+    : ($googleId !== '' ? 'Managed via Google OAuth' : 'Not set');
 $isOwnProfile = $targetUserId === $sessionUserId;
 $pageHeading = $isOwnProfile ? 'My Profile' : 'Staff Profile';
 $pageIntro = $isOwnProfile
@@ -134,8 +137,8 @@ include 'nav.php';
                         <div class="mt-2 text-sm font-bold text-slate-700 dark:text-slate-200 uppercase"><?php echo htmlspecialchars($status); ?></div>
                     </div>
                     <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-4">
-                        <div class="text-[10px] font-black uppercase tracking-widest text-slate-400">Role ID</div>
-                        <div class="mt-2 text-sm font-bold text-slate-700 dark:text-slate-200"><?php echo htmlspecialchars((string) $roleId); ?></div>
+                        <div class="text-[10px] font-black uppercase tracking-widest text-slate-400">Access Model</div>
+                        <div class="mt-2 text-sm font-bold text-slate-700 dark:text-slate-200">Flags-based permissions</div>
                     </div>
                 </div>
 
@@ -155,11 +158,11 @@ include 'nav.php';
                     <div class="text-[10px] font-black uppercase tracking-[0.25em] text-indigo-600 dark:text-indigo-300">Authentication</div>
                     <div class="flex justify-between gap-4 text-sm">
                         <span class="text-slate-500 dark:text-slate-400">Google linked</span>
-                        <span class="font-black text-slate-900 dark:text-white"><?php echo $googleId !== '' ? 'Yes' : 'No'; ?></span>
+                        <span class="font-black text-slate-900 dark:text-white"><?php echo $authLinked ? 'Yes' : 'No'; ?></span>
                     </div>
                     <div class="flex justify-between gap-4 text-sm">
                         <span class="text-slate-500 dark:text-slate-400">User Auth ID</span>
-                        <span class="font-black text-slate-900 dark:text-white"><?php echo htmlspecialchars((string) ($userAuthId ?? 'Not set')); ?></span>
+                        <span class="font-black text-slate-900 dark:text-white"><?php echo htmlspecialchars($userAuthIdDisplay); ?></span>
                     </div>
                 </div>
             </div>

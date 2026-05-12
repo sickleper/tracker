@@ -15,6 +15,12 @@ if (!isTrackerAuthenticated()) {
     exit;
 }
 
+if (!isTrackerAdminUser()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Admin access required']);
+    exit;
+}
+
 function normalizeServiceDateInput($value): string
 {
     if ($value === null) {

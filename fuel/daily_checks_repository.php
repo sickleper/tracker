@@ -2,9 +2,20 @@
 
 require_once __DIR__ . '/../config.php';
 
+function fuelDailyChecksTenantTag(): string
+{
+    $tenantSlug = trim((string) (function_exists('trackerTenantSlug') ? trackerTenantSlug() : ''));
+    if ($tenantSlug === '') {
+        $tenantSlug = 'global';
+    }
+
+    $sanitized = preg_replace('/[^a-zA-Z0-9._-]/', '_', $tenantSlug);
+    return $sanitized === '' ? 'global' : $sanitized;
+}
+
 function fuelDailyChecksPath(): string
 {
-    return TRACKER_REPO_DIR . '/storage/fuel_daily_checks.json';
+    return TRACKER_REPO_DIR . '/storage/fuel_daily_checks_' . fuelDailyChecksTenantTag() . '.json';
 }
 
 function fuelDailyCheckItems(): array

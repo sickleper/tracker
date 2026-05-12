@@ -30,12 +30,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $requestedTenantSlug = trim((string) ($_POST['tenant_slug'] ?? ''));
     $resolvedTenantSlug = trackerTenantSlug();
 
-    $respond = static function (bool $success, string $message, int $statusCode = 200) use ($resolvedTenantSlug): void {
+    $resolvedTenantId = function_exists('trackerTenantId') ? trackerTenantId() : null;
+
+    $respond = static function (bool $success, string $message, int $statusCode = 200) use ($resolvedTenantSlug, $resolvedTenantId): void {
         http_response_code($statusCode);
         echo json_encode([
             'success' => $success,
             'message' => $message,
             'tenant_slug' => $resolvedTenantSlug,
+            'tenant_id' => $resolvedTenantId,
         ]);
     };
 

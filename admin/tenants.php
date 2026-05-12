@@ -219,6 +219,7 @@ const featureToggleMapping = [
 let tenantRows = [];
 let tenantLookups = { users: [] };
 const reportTenantStorageKey = 'tracker_admin_report_tenant_id';
+const tenantReportIdRegex = /^\d+$/;
 
 function escapeHtml(value) {
     return String(value ?? '')
@@ -233,13 +234,25 @@ function swalConfig() {
     return typeof getSwalConfig === 'function' ? getSwalConfig() : {};
 }
 
+function normalizeTenantId(value) {
+    const normalized = String(value || '').trim();
+    if (!tenantReportIdRegex.test(normalized)) {
+        return '';
+    }
+    return normalized;
+}
+
 function getPersistedReportTenantId() {
     const params = new URLSearchParams(window.location.search);
-    return params.get('tenant_report_id') || sessionStorage.getItem(reportTenantStorageKey) || '';
+    const queryTenantId = normalizeTenantId(params.get('tenant_report_id'));
+    if (queryTenantId) {
+        return queryTenantId;
+    }
+    return normalizeTenantId(sessionStorage.getItem(reportTenantStorageKey));
 }
 
 function persistReportTenantId(tenantId) {
-    const normalized = String(tenantId || '').trim();
+    const normalized = normalizeTenantId(tenantId);
     if (normalized) {
         sessionStorage.setItem(reportTenantStorageKey, normalized);
     } else {
@@ -255,21 +268,35 @@ function persistReportTenantId(tenantId) {
     window.history.replaceState({}, '', url.toString());
 }
 
+function isKnownTenantId(tenantId) {
+    if (!tenantId) {
+        return false;
+    }
+    return tenantRows.some((tenant) => String(tenant.id) === String(normalizeTenantId(tenantId)));
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('provisionForm').addEventListener('submit', provisionInstance);
     document.getElementById('saveFeatureToggles')?.addEventListener('click', saveFeatureToggles);
     document.getElementById('restoreTenantContextBtn')?.addEventListener('click', restoreTenantContext);
+    document.getElementById('tenantsBody')?.addEventListener('click', handleTenantRowAction);
     document.getElementById('reportTenantId')?.addEventListener('change', (event) => {
         loadTenantReport(event.target.value);
     });
     await Promise.all([loadTenants(), loadLookups()]);
     const persistedTenantId = getPersistedReportTenantId();
-    if (persistedTenantId) {
+    if (persistedTenantId && isKnownTenantId(persistedTenantId)) {
         const reportSelect = document.getElementById('reportTenantId');
         if (reportSelect) {
             reportSelect.value = persistedTenantId;
         }
         await loadTenantReport(persistedTenantId);
+    } else {
+        persistReportTenantId('');
+        const reportSelect = document.getElementById('reportTenantId');
+        if (reportSelect?.value && isKnownTenantId(reportSelect.value)) {
+            await loadTenantReport(reportSelect.value);
+        }
     }
 });
 
@@ -280,6 +307,36 @@ async function apiJson(url, options = {}) {
         throw new Error(data.message || 'Request failed.');
     }
     return data;
+}
+
+function handleTenantRowAction(event) {
+    const button = event.target.closest('[data-tenant-action]');
+    if (!button) {
+        return;
+    }
+
+    const tenantId = normalizeTenantId(button.dataset.tenantId);
+    if (!tenantId || !isKnownTenantId(tenantId)) {
+        Swal.fire({ ...swalConfig(), icon: 'warning', title: 'Invalid tenant', text: 'Select a valid tenant row before continuing.' });
+        return;
+    }
+
+    const tenant = tenantRows.find((row) => String(row.id) === tenantId);
+    const action = button.dataset.tenantAction;
+
+    if (action === 'impersonate') {
+        openTenantImpersonation(tenantId, String(tenant?.slug || ''), String(tenant?.name || ''));
+        return;
+    }
+
+    if (action === 'report') {
+        loadTenantReport(tenantId);
+        return;
+    }
+
+    if (action === 'delete' && tenant?.slug !== 'default') {
+        deleteTenant(tenantId, String(tenant?.slug || ''));
+    }
 }
 
 async function openTenantImpersonation(tenantId, tenantSlug, tenantName) {
@@ -369,15 +426,7 @@ async function loadTenants() {
     tenantRows = data.data || [];
     renderTenants();
     populateTenantSelects();
-    const reportSelect = document.getElementById('reportTenantId');
-    if (reportSelect && reportSelect.value) {
-        await Promise.all([
-            loadFeatureSettings(reportSelect.value),
-            loadTenantReport(reportSelect.value)
-        ]);
-    } else {
-        clearFeatureToggles();
-    }
+    clearFeatureToggles();
 }
 
 async function loadLookups() {
@@ -398,16 +447,16 @@ function renderTenants() {
                 <div class="font-black text-gray-900 dark:text-white">${escapeHtml(tenant.name)}</div>
                 <div class="text-[10px] font-bold uppercase tracking-widest text-gray-400">${escapeHtml(tenant.slug)} • ${escapeHtml(tenant.status)}</div>
             </td>
-            <td class="px-6 py-4 text-center font-black text-gray-700 dark:text-slate-200">${tenant.users_count}</td>
-            <td class="px-6 py-4 text-center font-black text-gray-700 dark:text-slate-200">${tenant.categories_count}</td>
-            <td class="px-6 py-4 text-center font-black text-gray-700 dark:text-slate-200">${tenant.projects_count}</td>
-            <td class="px-6 py-4 text-center font-black text-gray-700 dark:text-slate-200">${tenant.leads_count}</td>
+            <td class="px-6 py-4 text-center font-black text-gray-700 dark:text-slate-200">${escapeHtml(tenant.users_count)}</td>
+            <td class="px-6 py-4 text-center font-black text-gray-700 dark:text-slate-200">${escapeHtml(tenant.categories_count)}</td>
+            <td class="px-6 py-4 text-center font-black text-gray-700 dark:text-slate-200">${escapeHtml(tenant.projects_count)}</td>
+            <td class="px-6 py-4 text-center font-black text-gray-700 dark:text-slate-200">${escapeHtml(tenant.leads_count)}</td>
             <td class="px-6 py-4 text-right">
                 <div class="flex justify-end gap-2">
-                    <button type="button" onclick="openTenantImpersonation(${tenant.id}, '${escapeHtml(tenant.slug)}', '${escapeHtml(tenant.name)}')" class="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 font-black uppercase text-[9px] tracking-widest rounded-lg hover:bg-emerald-600 hover:text-white transition-all">Login</button>
-                    <button type="button" onclick="loadTenantReport(${tenant.id})" class="px-3 py-1.5 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200 font-black uppercase text-[9px] tracking-widest rounded-lg hover:bg-gray-900 hover:text-white transition-all">Report</button>
+                    <button type="button" data-tenant-action="impersonate" data-tenant-id="${escapeHtml(tenant.id)}" class="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 font-black uppercase text-[9px] tracking-widest rounded-lg hover:bg-emerald-600 hover:text-white transition-all">Login</button>
+                    <button type="button" data-tenant-action="report" data-tenant-id="${escapeHtml(tenant.id)}" class="px-3 py-1.5 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200 font-black uppercase text-[9px] tracking-widest rounded-lg hover:bg-gray-900 hover:text-white transition-all">Report</button>
                     ${tenant.slug !== 'default' ? `
-                        <button type="button" onclick="deleteTenant(${tenant.id}, '${escapeHtml(tenant.slug)}')" class="px-3 py-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-black uppercase text-[9px] tracking-widest rounded-lg hover:bg-red-600 hover:text-white transition-all">Delete</button>
+                        <button type="button" data-tenant-action="delete" data-tenant-id="${escapeHtml(tenant.id)}" class="px-3 py-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-black uppercase text-[9px] tracking-widest rounded-lg hover:bg-red-600 hover:text-white transition-all">Delete</button>
                     ` : ''}
                 </div>
             </td>
@@ -471,7 +520,7 @@ function populateTenantSelects() {
     const currentValues = {
         reportTenantId: document.getElementById('reportTenantId')?.value || ''
     };
-    const options = tenantRows.map((tenant) => `<option value="${tenant.id}">${escapeHtml(tenant.name)} (${escapeHtml(tenant.slug)})</option>`).join('');
+    const options = tenantRows.map((tenant) => `<option value="${escapeHtml(tenant.id)}">${escapeHtml(tenant.name)} (${escapeHtml(tenant.slug)})</option>`).join('');
     ['reportTenantId'].forEach((id) => {
         const select = document.getElementById(id);
         if (select) {
@@ -484,8 +533,8 @@ function populateTenantSelects() {
 }
 
 async function loadTenantReport(explicitTenantId = null) {
-    const tenantId = explicitTenantId || document.getElementById('reportTenantId').value;
-    if (!tenantId) {
+    const tenantId = normalizeTenantId(explicitTenantId || document.getElementById('reportTenantId')?.value);
+    if (!tenantId || !isKnownTenantId(tenantId)) {
         persistReportTenantId('');
         document.getElementById('tenantReport').innerHTML = '';
         Swal.fire({ ...swalConfig(), icon: 'warning', title: 'Select a tenant', text: 'Choose a tenant before loading the report.' });
@@ -527,7 +576,7 @@ async function loadTenantReport(explicitTenantId = null) {
                     ${rows.map((row) => `
                         <tr>
                             <td class="px-6 py-4 font-bold text-gray-700 dark:text-slate-200">${escapeHtml(row.table)}</td>
-                            <td class="px-6 py-4 text-right font-black text-indigo-600 dark:text-indigo-400">${row.rows}</td>
+                            <td class="px-6 py-4 text-right font-black text-indigo-600 dark:text-indigo-400">${escapeHtml(row.rows)}</td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -545,13 +594,14 @@ async function loadTenantReport(explicitTenantId = null) {
 }
 
 async function loadFeatureSettings(tenantId) {
-    if (!tenantId) {
+    const normalizedTenantId = normalizeTenantId(tenantId);
+    if (!normalizedTenantId || !isKnownTenantId(normalizedTenantId)) {
         clearFeatureToggles();
         return;
     }
 
     try {
-        const result = await apiJson(`${window.laravelApiUrl}/api/tenants/${tenantId}/feature-settings`, {
+        const result = await apiJson(`${window.laravelApiUrl}/api/tenants/${normalizedTenantId}/feature-settings`, {
             headers: tenantHeaders()
         });
         applyFeatureToggles(result.data || {});
@@ -591,8 +641,8 @@ function getFeaturePayload() {
 }
 
 async function saveFeatureToggles() {
-    const tenantId = document.getElementById('reportTenantId').value;
-    if (!tenantId) {
+    const tenantId = normalizeTenantId(document.getElementById('reportTenantId')?.value);
+    if (!tenantId || !isKnownTenantId(tenantId)) {
         Swal.fire({ ...swalConfig(), icon: 'warning', title: 'Select a tenant', text: 'Choose a tenant before saving feature toggles.' });
         return;
     }

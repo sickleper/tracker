@@ -21,7 +21,7 @@
                 helper: check?.failed_items?.length ? `Failed: ${FuelPage.escapeHtml(check.failed_items.join(', '))}` : 'Failed items recorded'
             },
             missing: {
-                badge: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300',
+                badge: 'bg-amber-200 dark:bg-amber-950/70 text-amber-950 dark:text-amber-100 ring-1 ring-amber-300/80 dark:ring-amber-700/70',
                 label: 'Not Checked',
                 helper: 'Complete today\'s check before logging use'
             }

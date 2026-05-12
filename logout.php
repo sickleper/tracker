@@ -13,8 +13,8 @@ if ($apiToken && $baseUrl !== '') {
         'Accept: application/json',
         'Authorization: Bearer ' . $apiToken,
     ]);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
     curl_exec($ch);
     curl_close($ch);
 }

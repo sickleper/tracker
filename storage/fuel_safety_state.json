@@ -1,0 +1,31 @@
+{
+    "defects": [
+        {
+            "id": "",
+            "vehicle_id": 1,
+            "vehicle_label": "151-D-101",
+            "defect_details": "Daily vehicle check failed for 151-D-101. Failed items: Lights, Bodywork",
+            "notes": "",
+            "date": "2026-03-29",
+            "severity": "critical",
+            "off_road": true,
+            "status": "open",
+            "source": "daily_check",
+            "api_synced": true,
+            "created_by": "john lawlor",
+            "created_at": "2026-03-29T21:28:10+00:00",
+            "updated_at": "2026-03-29T21:28:10+00:00",
+            "key": "1|2026-03-29|9aa2d21e17c87e04fb97250b7c4ce6c9"
+        }
+    ],
+    "vehicle_flags": {
+        "1": {
+            "vehicle_id": 1,
+            "off_road": true,
+            "severity": "critical",
+            "reason": "Daily vehicle check failed for 151-D-101. Failed items: Lights, Bodywork",
+            "defect_id": "",
+            "updated_at": "2026-03-29T21:28:10+00:00"
+        }
+    }
+}

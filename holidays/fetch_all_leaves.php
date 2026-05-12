@@ -6,6 +6,7 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../tracker_data.php';
+require_once __DIR__ . '/leave_utils.php';
 
 if (!isTrackerAuthenticated()) {
     http_response_code(401);
@@ -13,13 +14,23 @@ if (!isTrackerAuthenticated()) {
     exit;
 }
 
-$year = $_GET['year'] ?? date('Y');
+$rawYear = $_GET['year'] ?? null;
+$year = resolveYearFilter($rawYear);
 
 try {
-    $response = makeApiCall('/api/leaves/all', ['year' => $year]);
+    $params = [];
+    if ($year) {
+        $params['year'] = $year;
+    }
+
+    $response = makeApiCall('/api/leaves/all', $params);
     
     if ($response && ($response['success'] ?? false)) {
         $mapped = array_map(function($l) {
+            if (!is_array($l) || $isHolidayLeaveType($l)) {
+                return null;
+            }
+
             return [
                 'id' => $l['id'],
                 'user_id' => $l['user_id'],
@@ -31,6 +42,8 @@ try {
                 'reason' => $l['reason']
             ];
         }, $response['data']);
+
+        $mapped = array_values(array_filter($mapped, fn($row) => is_array($row)));
 
         echo json_encode(['status' => 'success', 'data' => $mapped]);
     } else {

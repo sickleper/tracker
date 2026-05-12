@@ -13,6 +13,12 @@ if (!isTrackerAuthenticated()) {
     exit;
 }
 
+if (!isTrackerAdminUser()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Admin access required']);
+    exit;
+}
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $data = [
         'name' => $_POST['name'] ?? null,

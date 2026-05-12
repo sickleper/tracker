@@ -13,8 +13,19 @@ if (!isTrackerAuthenticated()) {
     exit;
 }
 
+if (!isTrackerAdminUser()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Admin access required']);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['vehicle_id'])) {
-    $vehicleId = $_POST['vehicle_id'];
+    $vehicleId = (int) ($_POST['vehicle_id'] ?? 0);
+    if ($vehicleId <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Invalid vehicle']);
+        exit;
+    }
+
     $data = [
         'license_plate' => $_POST['license_plate'] ?? null,
         'make_model' => $_POST['make_model'] ?? null,

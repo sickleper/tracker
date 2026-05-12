@@ -311,7 +311,7 @@ class EircodeAPI {
         $curlOptions = [
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_TIMEOUT => 30,
             CURLOPT_HTTPHEADER => array_merge($defaultHeaders, $headers),
             CURLOPT_ENCODING => '', // Handle gzip automatically

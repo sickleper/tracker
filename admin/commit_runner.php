@@ -1,5 +1,6 @@
 <?php
 require_once '../config.php';
+require_once 'git_runtime.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -34,7 +35,7 @@ if (empty($message)) {
 
 $repoDir = realpath(dirname(__DIR__)) ?: dirname(__DIR__);
 
-if (trim((string) shell_exec('git -C ' . escapeshellarg($repoDir) . ' rev-parse --is-inside-work-tree 2>/dev/null')) !== 'true') {
+if (!trackerGitIsConfigured($repoDir)) {
     http_response_code(503);
     echo json_encode(['success' => false, 'message' => 'Git not configured']);
     exit();
@@ -46,13 +47,12 @@ $userName = $userInfo['name'];
 $userHome = $userInfo['dir'];
 
 // Construct the git commands
-// 1. git add .
+// 1. git add -A
 // 2. git commit -m "..."
+$gitEnv = trackerGitEnvCommand($repoDir, ['HOME' => $userHome]);
 $commands = [
-    "export HOME=" . escapeshellarg($userHome),
-    "cd " . escapeshellarg($repoDir),
-    "git add .",
-    "git commit -m " . escapeshellarg($message)
+    $gitEnv . " git -C " . escapeshellarg($repoDir) . " add -A",
+    $gitEnv . " git -C " . escapeshellarg($repoDir) . " commit -m " . escapeshellarg($message)
 ];
 
 $fullCommand = implode(' && ', $commands) . ' 2>&1';
@@ -60,6 +60,9 @@ $fullCommand = implode(' && ', $commands) . ' 2>&1';
 $output = [];
 $exitCode = 1;
 exec($fullCommand, $output, $exitCode);
+if ($exitCode !== 0 && $output === []) {
+    $output[] = 'Git command failed without output. Check repository permissions, Git identity, and deploy log ownership.';
+}
 
 // Logging
 $logDir = $repoDir . '/storage/deploy_logs';

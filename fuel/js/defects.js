@@ -34,8 +34,9 @@
                     const offRoadBadge = defect.off_road
                         ? '<span class="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-300 rounded-lg">Off Road</span>'
                         : '';
-                    const resolveButton = defect.id
-                        ? `<button type="button" class="resolve-defect-btn text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-200 font-black uppercase text-[10px] tracking-widest transition-colors" data-defect-id="${FuelPage.escapeHtml(defect.id)}"><i class="fas fa-check-circle"></i> Mark Rectified</button>`
+                    const hasResolveRef = Boolean(defect.id || defect.key);
+                    const resolveButton = hasResolveRef
+                        ? `<button type="button" class="resolve-defect-btn text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-200 font-black uppercase text-[10px] tracking-widest transition-colors" data-defect-id="${FuelPage.escapeHtml(defect.id || '')}" data-defect-key="${FuelPage.escapeHtml(defect.key || '')}"><i class="fas fa-check-circle"></i> Mark Rectified</button>`
                         : '';
                     const card = $(`
                         <div class="p-4 bg-gray-50 dark:bg-slate-950 rounded-2xl border border-gray-100 dark:border-slate-800 mb-3 relative overflow-hidden group hover:bg-white dark:hover:bg-slate-900 hover:shadow-md transition-all">
@@ -52,7 +53,7 @@
                             </div>
                             <p class="text-sm text-gray-700 dark:text-gray-300 font-medium leading-relaxed">${FuelPage.escapeHtml(defect.defect_details || '')}</p>
                             ${defect.notes ? `<p class="mt-3 text-xs font-medium text-gray-500 dark:text-gray-400">${FuelPage.escapeHtml(defect.notes)}</p>` : ''}
-                            ${resolveButton ? `<div class="mt-4 flex justify-end">${resolveButton.replace('class="resolve-defect-btn', `data-defect-key="${FuelPage.escapeHtml(defect.key || '')}" class="resolve-defect-btn`)}</div>` : ''}
+                            ${resolveButton ? `<div class="mt-4 flex justify-end">${resolveButton}</div>` : ''}
                         </div>
                     `);
 

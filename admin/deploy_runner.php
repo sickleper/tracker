@@ -1,5 +1,6 @@
 <?php
 require_once '../config.php';
+require_once 'git_runtime.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -38,7 +39,7 @@ $scriptPath = $repoDir . '/deploy.sh';
 $logDir = $repoDir . '/storage/deploy_logs';
 $lockPath = $logDir . '/deploy.lock';
 
-if (trim((string) shell_exec('git -C ' . escapeshellarg($repoDir) . ' rev-parse --is-inside-work-tree 2>/dev/null')) !== 'true') {
+if (!trackerGitIsConfigured($repoDir)) {
     http_response_code(503);
     echo json_encode([
         'success' => false,
@@ -81,10 +82,9 @@ $logPath = $logDir . '/deploy-' . $timestamp . '.log';
 // Determine home directory for the current user
 $userName = posix_getpwuid(posix_geteuid())['name'];
 $userHome = '/home/' . $userName;
-$sshConfig = $userHome . '/.ssh/config';
-$gitSshCommand = "ssh -F " . escapeshellarg($sshConfig);
 
-$command = "export HOME=" . escapeshellarg($userHome) . " && export GIT_SSH_COMMAND=" . escapeshellarg($gitSshCommand) . " && bash " . escapeshellarg($scriptPath) . " " . escapeshellarg($branch) . " 2>&1";
+$command = trackerGitEnvCommand($repoDir, trackerGitSshEnv($repoDir, $userHome))
+    . ' bash ' . escapeshellarg($scriptPath) . ' ' . escapeshellarg($branch) . ' 2>&1';
 
 $output = [];
 $exitCode = 1;

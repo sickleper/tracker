@@ -8,10 +8,23 @@ require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../tracker_data.php';
 require_once __DIR__ . '/daily_checks_repository.php';
 require_once __DIR__ . '/safety_repository.php';
+require_once __DIR__ . '/upload_helpers.php';
 
 if (!isTrackerAuthenticated()) {
     http_response_code(401);
     echo json_encode(['success' => false, 'message' => 'Authentication required']);
+    exit;
+}
+
+$isAdmin = isTrackerAdminUser();
+$sessionUserId = (int) ($_SESSION['user_id'] ?? 0);
+if (!$isAdmin && $sessionUserId <= 0) {
+    $sessionUserId = fuelCurrentUserId();
+}
+
+if (!$isAdmin && $sessionUserId <= 0) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'message' => 'Unable to resolve user identity.']);
     exit;
 }
 
@@ -25,7 +38,32 @@ function fuelLogNumber($value): ?float
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['log_id'])) {
-    $log_id = $_POST['log_id'];
+    $log_id = (int) ($_POST['log_id'] ?? 0);
+
+    if ($log_id <= 0) {
+        http_response_code(422);
+        echo json_encode(['success' => false, 'message' => 'Invalid log id']);
+        exit;
+    }
+
+    if (!$isAdmin) {
+        $logResponse = makeApiCall("/api/fuel/logs/{$log_id}");
+        $existingLog = $logResponse['log'] ?? null;
+        $logOwnerId = (int) ($existingLog['user_id'] ?? 0);
+
+        if (!$existingLog || $logOwnerId <= 0) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Fuel log not found']);
+            exit;
+        }
+
+        if ($logOwnerId !== $sessionUserId) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Cannot edit another user\'s fuel log']);
+            exit;
+        }
+    }
+
     $vehicleId = (int) ($_POST['vehicle_id'] ?? 0);
     $logDate = trim((string) ($_POST['date'] ?? ''));
     $startMileage = fuelLogNumber($_POST['start_mileage'] ?? null);
@@ -87,9 +125,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['log_id'])) {
         }
     }
 
+    $requestedUserId = (int) ($_POST['user_id'] ?? 0);
+    if (!$isAdmin) {
+        $requestedUserId = $sessionUserId;
+    } elseif ($requestedUserId <= 0) {
+        $requestedUserId = $sessionUserId;
+    }
+
     $data = [
         'vehicle_id' => $vehicleId,
-        'user_id' => $_POST['user_id'] ?? null,
+        'user_id' => $requestedUserId > 0 ? $requestedUserId : null,
         'date' => $logDate,
         'start_mileage' => $startMileage,
         'finish_mileage' => $finishMileage,
@@ -106,15 +151,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['log_id'])) {
             exit;
         }
 
-        $targetDir = __DIR__ . '/uploads/';
+        $targetDir = fuelReceiptUploadDir();
         if (!is_dir($targetDir) && !mkdir($targetDir, 0775, true) && !is_dir($targetDir)) {
             throw new RuntimeException('Unable to create upload directory.');
         }
 
         $originalName = (string) ($_FILES['image_file']['name'] ?? 'receipt');
-        $safeBase = preg_replace('/[^A-Za-z0-9._-]/', '_', basename($originalName));
-        $uploadedImage = time() . '_' . $safeBase;
-        if (!move_uploaded_file($_FILES["image_file"]["tmp_name"], $targetDir . $uploadedImage)) {
+        $uploadedImage = fuelBuildReceiptUploadName($originalName);
+        if (!move_uploaded_file($_FILES["image_file"]["tmp_name"], fuelReceiptUploadPath($uploadedImage))) {
             throw new RuntimeException('Unable to store receipt image.');
         }
         $data['image_file'] = $uploadedImage;
@@ -126,14 +170,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['log_id'])) {
         if ($response && ($response['success'] ?? false)) {
             echo json_encode(['success' => true, 'message' => 'Fuel log updated successfully']);
         } else {
-            if ($uploadedImage && is_file(__DIR__ . '/uploads/' . $uploadedImage)) {
-                @unlink(__DIR__ . '/uploads/' . $uploadedImage);
+            if ($uploadedImage && is_file(fuelReceiptUploadPath($uploadedImage))) {
+                @unlink(fuelReceiptUploadPath($uploadedImage));
             }
             echo json_encode(['success' => false, 'message' => $response['message'] ?? 'Failed to update log']);
         }
     } catch (Exception $e) {
-        if ($uploadedImage && is_file(__DIR__ . '/uploads/' . $uploadedImage)) {
-            @unlink(__DIR__ . '/uploads/' . $uploadedImage);
+        if ($uploadedImage && is_file(fuelReceiptUploadPath($uploadedImage))) {
+            @unlink(fuelReceiptUploadPath($uploadedImage));
         }
         http_response_code(500);
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);

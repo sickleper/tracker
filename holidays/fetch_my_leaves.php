@@ -6,6 +6,7 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../tracker_data.php';
+require_once __DIR__ . '/leave_utils.php';
 
 if (!isTrackerAuthenticated()) {
     http_response_code(401);
@@ -15,18 +16,42 @@ if (!isTrackerAuthenticated()) {
 
 $sessionUserId = (int) ($_SESSION['user_id'] ?? 0);
 $requestedUserId = $_GET['user_id'] ?? null;
-$year = $_GET['year'] ?? date('Y');
-$userId = $requestedUserId ?? $sessionUserId;
+$isAdmin = isTrackerAdminUser();
+$rawYear = $_GET['year'] ?? null;
+$year = resolveYearFilter($rawYear);
+$resolvedUserId = null;
 
-if (!$userId) {
+if ($requestedUserId === null) {
+    $resolvedUserId = $sessionUserId;
+} elseif (is_string($requestedUserId) && strtolower(trim($requestedUserId)) === 'all') {
+    if (!$isAdmin) {
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'message' => 'Forbidden']);
+        exit;
+    }
+    $resolvedUserId = 'all';
+} else {
+    $requestedUserId = (int) $requestedUserId;
+    if (!$isAdmin && $requestedUserId !== $sessionUserId) {
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'message' => 'Forbidden']);
+        exit;
+    }
+    $resolvedUserId = $requestedUserId;
+}
+
+if (!$resolvedUserId) {
     echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
     exit;
 }
 
 try {
-    $params = ['year' => $year];
-    if ($userId !== 'all') {
-        $params['user_id'] = (int)$userId;
+    $params = [];
+    if ($year) {
+        $params['year'] = $year;
+    }
+    if ($resolvedUserId !== 'all') {
+        $params['user_id'] = (int) $resolvedUserId;
     }
 
     $response = makeApiCall('/api/leaves', $params);
@@ -35,6 +60,10 @@ try {
         // error_log("LEAVES_DEBUG: " . json_encode($response['data']));
         // Map to match frontend expectations for grouped dates
         $mapped = array_map(function($l) {
+            if (!is_array($l) || $isHolidayLeaveType($l)) {
+                return null;
+            }
+
             $typeName = $l['leave_type']['type_name'] ?? ($l['type_name'] ?? 'Unknown');
             return [
                 'id' => $l['id'],
@@ -50,6 +79,8 @@ try {
                 'unique_id' => $l['unique_id']
             ];
         }, $response['data']);
+
+        $mapped = array_values(array_filter($mapped, fn($row) => is_array($row)));
 
         echo json_encode(['status' => 'success', 'data' => $mapped]);
     } else {

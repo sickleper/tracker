@@ -6,6 +6,7 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../tracker_data.php';
+require_once __DIR__ . '/leave_utils.php';
 
 if (!isTrackerAuthenticated()) {
     http_response_code(401);
@@ -13,7 +14,8 @@ if (!isTrackerAuthenticated()) {
     exit;
 }
 
-$year = isset($_GET['year']) ? (int)$_GET['year'] : date('Y');
+$rawYear = $_GET['year'] ?? null;
+$year = resolveYearFilter($rawYear) ?? date('Y');
 $requestedUserId = isset($_GET['user_id']) ? (int) $_GET['user_id'] : null;
 $sessionUserId = (int) ($_SESSION['user_id'] ?? 0);
 $isAdmin = isTrackerAdminUser();
@@ -34,6 +36,11 @@ try {
     $response = makeApiCall('/api/leaves/summary', $params);
     
     if ($response && ($response['success'] ?? false)) {
+        if (isset($response['data']) && is_array($response['data'])) {
+            $response['data'] = array_values(array_filter($response['data'], function ($row) {
+                return is_array($row) ? !$isHolidayLeaveType($row) : false;
+            }));
+        }
         echo json_encode($response);
     } else {
         echo json_encode(['status' => 'error', 'message' => $response['message'] ?? 'Failed to fetch summary']);

@@ -15,6 +15,12 @@ if (!isTrackerAuthenticated()) {
     exit;
 }
 
+if (!isTrackerAdminUser()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Admin access required']);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['success' => false, 'message' => 'Invalid request method']);
@@ -24,18 +30,29 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $defectId = trim((string) ($_POST['defect_id'] ?? ''));
 $defectKey = trim((string) ($_POST['defect_key'] ?? ''));
 $rectifiedOn = date('Y-m-d');
-if ($defectId === '') {
+if ($defectId === '' && $defectKey === '') {
     http_response_code(422);
-    echo json_encode(['success' => false, 'message' => 'Defect id is required.']);
+    echo json_encode(['success' => false, 'message' => 'Defect reference is required.']);
     exit;
 }
 
 try {
     $state = fuelLoadSafetyState();
-    $defect = fuelResolveSafetyDefect($state, $defectId);
+    $defect = null;
+    if ($defectId !== '') {
+        $defect = fuelResolveSafetyDefect($state, $defectId);
+    }
+    if (!$defect && $defectKey !== '') {
+        $defect = fuelResolveSafetyDefectByKey($state, $defectKey, $rectifiedOn);
+    }
     $apiUpdated = false;
 
-    if (!$defect && strpos($defectId, 'fuel_defect_') !== 0 && strpos($defectId, 'daily_check_') !== 0) {
+    if (
+        !$defect
+        && $defectId !== ''
+        && strpos($defectId, 'fuel_defect_') !== 0
+        && strpos($defectId, 'daily_check_') !== 0
+    ) {
         $apiResponse = makeApiCall("/api/fuel/defects/{$defectId}", [
             'rectified_on' => $rectifiedOn,
         ], 'PATCH');
