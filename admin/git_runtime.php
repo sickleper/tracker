@@ -67,11 +67,14 @@ if (!function_exists('trackerGitSshEnv')) {
             $home = dirname(dirname($configPath));
             return [
                 'HOME' => $home,
+                'XDG_CONFIG_HOME' => sys_get_temp_dir(),
                 'GIT_SSH_COMMAND' => 'ssh -F ' . $configPath,
             ];
         }
 
-        return $preferredHome !== '' ? ['HOME' => $preferredHome] : [];
+        return $preferredHome !== ''
+            ? ['HOME' => $preferredHome, 'XDG_CONFIG_HOME' => sys_get_temp_dir()]
+            : ['XDG_CONFIG_HOME' => sys_get_temp_dir()];
     }
 }
 
